@@ -34,3 +34,11 @@ python /Users/vincent/src/microsoft/cameratraps/detection/process_video.py --deb
 python /Users/vincent/src/microsoft/cameratraps/detection/process_video.py --debug_max_frames 30 --output_video_file foo.mp4 --render_output_video True --n_cores 2 ../../microsoft/md_v4.1.0.pb img/IMG_0006.MP4
 
 /Users/vincent/src/PNM/camtrap/.venv/bin/python /Users/vincent/src/PNM/camtrap/bin/parseTest.py img/IMG_0006.MP4 -d frames -l 1000 -p 30
+
+sur PC
+2020-08-24
+python bin/videoDetector.py -d frames  -p 30 /mnt/d/camtrap/2020-08-24/IMG_0015.MP4 
+15 vide
+16 chamois
+17 chamois nocturne
+18 invalide
