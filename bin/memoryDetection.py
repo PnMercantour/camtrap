@@ -25,14 +25,15 @@ def processVideo(path, tf_detector, first_frame, last_frame, pick):
     frame = first_frame
     detection_results = []
     while frame <= last_frame:
-        print('current frame', frame)
+        print('frame', frame)
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame)
         success, image = cap.read()
         if success:
             pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-            pil_image.show()
+            #pil_image.show()
             result = tf_detector.generate_detections_one_image(
                 pil_image, frame)
+            print(result)
             detection_results.append(result)
         frame = frame + pick
     return detection_results
