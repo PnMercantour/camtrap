@@ -103,7 +103,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-r', '--root', help='root directory for source files', type=Path, default='')
     parser.add_argument(
-        '-o', '--output', help='output directory', type=Path, default='MD output')
+        '-o', '--output', help='output directory', type=Path, default='output')
     parser.add_argument('video', nargs='+',
                         help='source video file or folder', type=Path)
 
@@ -119,17 +119,5 @@ if __name__ == '__main__':
         humanfriendly.format_timespan(elapsed)))
 
     for path in args.video:
-        results = processDirectory(path, args.root, args.output,  tf_detector, first_frame=args.first_frame,
+        processDirectory(path, args.root, args.output,  tf_detector, first_frame=args.first_frame,
                                    last_frame=args.last_frame, pick=args.pick)
-        print(results)
-        # results = md.process_images(
-        #     img_files, tf_detector, confidence_threshold=0.1)
-
-        # results = md.load_and_run_detector_batch(model_file=args.detector_file,
-        #                                          image_file_names=[
-        #                                              'frames/IMG_0006-0.jpg', 'frames/IMG_0006-360.jpg'],
-        #                                          checkpoint_path=None,
-        #                                          confidence_threshold=args.threshold,
-        #                                          # checkpoint_frequency=args.checkpoint_frequency,
-        #                                          # results=results,
-        #                                          n_cores=args.ncores)
