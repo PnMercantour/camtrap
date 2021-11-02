@@ -10,6 +10,9 @@ from detection import run_tf_detector_batch as md
 
 
 def processVideo(path, tf_detector, first_frame, last_frame, pick):
+    """process <path> video file with <tf_detector>
+    invokes tf_detector.generate_detections_one_image on all selected frames
+    returns the list of results"""
     if not path.is_file():
         print(path, 'not a file')
         return
@@ -30,10 +33,10 @@ def processVideo(path, tf_detector, first_frame, last_frame, pick):
         success, image = cap.read()
         if success:
             pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-            #pil_image.show()
+            # pil_image.show()
             result = tf_detector.generate_detections_one_image(
                 pil_image, frame)
-            print(result)
+            # print(result)
             detection_results.append(result)
         frame = frame + pick
     return detection_results
@@ -41,28 +44,16 @@ def processVideo(path, tf_detector, first_frame, last_frame, pick):
 
 if __name__ == '__main__':
     parser = ArgumentParser(
-        description='get selected frames from a video file')
+        description='Analyse selected frames from a video file. Print results on stdout')
     parser.add_argument(
         '-f', '--first_frame', help='first frame', type=int, default=0)
     parser.add_argument('-l', '--last_frame',
                         help='last frame', type=int, default=None)
     parser.add_argument(
         '-p', '--pick', help='pick every nth sample', type=int, default=6)
-    parser.add_argument(
-        '-d', '--dest_dir', help='destination directory', type=Path)
     parser.add_argument('--detector_file', default=getenv('MEGADETECTOR'))
-    parser.add_argument(
-        '--ncores',
-        type=int,
-        default=0,
-        help='Number of cores to use; only applies to CPU-based inference, does not support checkpointing when ncores > 1')
-    parser.add_argument(
-        '--threshold',
-        type=float,
-        default=0.1,
-        help="Confidence threshold between 0 and 1.0, don't include boxes below this confidence in the output file. Default is 0.1")
     parser.add_argument('video', nargs='+',
-                        help='source video file or folder', type=Path)
+                        help='source video files', type=Path)
     args = parser.parse_args()
     args.first_frame = max(args.first_frame, 0)
     args.pick = max(args.pick, 1)
@@ -78,14 +69,3 @@ if __name__ == '__main__':
         results = processVideo(file,  tf_detector, first_frame=args.first_frame,
                                last_frame=args.last_frame, pick=args.pick)
         print(results)
-        # results = md.process_images(
-        #     img_files, tf_detector, confidence_threshold=0.1)
-
-        # results = md.load_and_run_detector_batch(model_file=args.detector_file,
-        #                                          image_file_names=[
-        #                                              'frames/IMG_0006-0.jpg', 'frames/IMG_0006-360.jpg'],
-        #                                          checkpoint_path=None,
-        #                                          confidence_threshold=args.threshold,
-        #                                          # checkpoint_frequency=args.checkpoint_frequency,
-        #                                          # results=results,
-        #                                          n_cores=args.ncores)
