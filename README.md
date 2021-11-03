@@ -1,44 +1,77 @@
 # camtrap
 
-Traitement des données issues de pièges photo/vidéo
+## Traitement des données issues de pièges photo/vidéo
 
 https://github.com/microsoft/CameraTraps/blob/master/megadetector.md
 
+```
 python3.9 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip
 pip install tensorflow pillow humanfriendly matplotlib tqdm jsonpickle statistics requests
+```
 
-Utilisation de megadetector
-Créer un répertoire microsoft
-cloner les repos suivants:
+## Utilisation de megadetector
+
+Créer un répertoire microsoft pour recueillir les bibliothèques microsoft et le modèle tensorflow
+
+Cloner les repos cameratraps et ai4eutils:
+
+```
 git clone https://github.com/Microsoft/cameratraps -b tf1-compat
 git clone https://github.com/Microsoft/ai4eutils
-télécharger le modèle megadetector pour tensorflow
+```
+
+Télécharger le modèle megadetector pour tensorflow
 https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb
-export PYTHONPATH=/Users/vincent/src/microsoft/cameratraps:/Users/vincent/src/microsoft/ai4eutils
 
-opencv
+```
+export PYTHONPATH=<...>/microsoft/cameratraps:<...>/microsoft/ai4eutils
+```
+
+## opencv
+
 https://pypi.org/project/opencv-python/
+
+```
 pip install opencv-python
+```
 
-ln -s /Users/vincent/src/microsoft/cameratraps/detection/run_tf_detector bin/
-ln -s /Users/vincent/src/microsoft/cameratraps/detection/run_tf_detector_batch.py bin/
+### Exemple d'utilisation des scripts microsoft
 
-python /Users/vincent/src/microsoft/cameratraps/detection/process_video.py --debug_max_frames 60 ../../microsoft/md_v4.1.0.pb ../../pieges_photo/Test\ Data/Stephane/2020-07-27/IMG_0006.MP4
+```
+python <...>/microsoft/cameratraps/detection/process_video.py --debug_max_frames 60 <...>/microsoft/md_v4.1.0.pb test/mon_image.MP4
 
---output_video_file
---render_output_video True
---n_cores 2
+python <...>/microsoft/cameratraps/detection/process_video.py --debug_max_frames 30 --output_video_file foo.mp4 --render_output_video True <...>/microsoft/md_v4.1.0.pb test/mon_image.MP4
+```
 
-python /Users/vincent/src/microsoft/cameratraps/detection/process_video.py --debug_max_frames 30 --output_video_file foo.mp4 --render_output_video True --n_cores 2 ../../microsoft/md_v4.1.0.pb img/IMG_0006.MP4
+## Scripts PNM
 
-/Users/vincent/src/PNM/camtrap/.venv/bin/python /Users/vincent/src/PNM/camtrap/bin/parseTest.py img/IMG_0006.MP4 -d frames -l 1000 -p 30
+Exporter la variable d'environnement MEGADETECTOR
 
-sur PC
-2020-08-24
-python bin/videoDetector.py -d frames  -p 30 /mnt/d/camtrap/2020-08-24/IMG_0015.MP4 
-15 vide
-16 chamois
-17 chamois nocturne
-18 invalide
+```
+export MEGADETECTOR=<...>/microsoft/md_v4.1.0.pb
+```
+
+## videoDetect2Json
+
+Inspecte récursivement les répertoires et les fichiers donnés en paramètre et construit des rapport de détection au format json.
+
+```
+python bin/videoDetect2Json.py --help
+```
+
+## Exemple
+
+```
+python bin/videoDetect2Json.py -l 240 -p 30 -r img img
+```
+
+## Performances
+
+Détection sur cgp-sig (PC Xeon, OS Windows 10 WSL ubuntu).
+
+Données de la Maille 6.
+
+1974 videos, 11801 images : environ 6 images par vidéo.
+Durée du traitement : en moyenne 6,35s par image.
