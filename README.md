@@ -53,6 +53,14 @@ Exporter la variable d'environnement MEGADETECTOR
 export MEGADETECTOR=<...>/microsoft/md_v4.1.0.pb
 ```
 
+## videoMetadata
+
+Enregistre les métadonnées des fichiers source vidéo
+
+```
+python bin/videoMetadata --root data/video data/video
+```
+
 ## videoDetect2Json
 
 Inspecte récursivement les répertoires et les fichiers donnés en paramètre et construit des rapport de détection au format json.

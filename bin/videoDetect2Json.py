@@ -1,6 +1,7 @@
 """
 Batch processor for video files.
 Runs megadetector on each file then stores results into json files
+May also dump selected frames
 """
 import cv2
 from PIL import Image
