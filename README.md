@@ -61,13 +61,13 @@ Inspecte récursivement les répertoires et les fichiers donnés en paramètre e
 python bin/videoDetect2Json.py --help
 ```
 
-## Exemple
+### Exemple
 
 ```
 python bin/videoDetect2Json.py -l 240 -p 30 -r img img
 ```
 
-## Performances
+### Performances
 
 Détection sur cgp-sig (PC Xeon, OS Windows 10 WSL ubuntu).
 
@@ -75,3 +75,22 @@ Données de la Maille 6.
 
 1974 videos, 11801 images : environ 6 images par vidéo.
 Durée du traitement : en moyenne 6,35s par image.
+
+## jsonAnalyser
+
+Analyse et synthétise les rapports de détection sur les images.
+
+## visualisation
+
+### showFrame
+
+Le script showFrame extrait des frames d'une vidéo source et les affiche et/ou les enregistre.
+
+La visualisation d'images est une version modifiée de visualize_detector_output.
+
+- répertoire des vidéos
+- numéro de frame
+- chargement en mémoire de la frame
+- traitement (bounding boxes, etc)
+- écriture dans un répertoire de sortie ou tmp
+- affichage
