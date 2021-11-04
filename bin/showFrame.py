@@ -15,7 +15,7 @@ def showFrame(path, output=None, first_frame=0, last_frame=None, pick=None, show
                       ) if first_frame is not None else 0
     last_frame = min(
         num_frames - 1, last_frame) if last_frame else num_frames - 1
-    pick = max(pick, 1) if pick else num_frames // 2
+    pick = max(pick, 1) if pick else int(num_frames / 2)
     if output is not None:
         output.mkdir(parents=True, exist_ok=True)
     frame = first_frame

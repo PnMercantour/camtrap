@@ -94,3 +94,16 @@ La visualisation d'images est une version modifiée de visualize_detector_output
 - traitement (bounding boxes, etc)
 - écriture dans un répertoire de sortie ou tmp
 - affichage
+
+## Test
+
+```
+python bin/videoDetect2Json.py data/video/test/IMG_0006.MP4
+```
+
+Utiliser l'option --dump pour générer des images correspondant aux trames sélectionnées.
+
+```
+python bin/videoDetect2Json.py --dump data/video/test/IMG_0006.MP4
+python bin/annotate_image.py  -i data/frames/test data/detection/frames/test/IMG_0006.MP4-1814.json data/annotated_frames/test
+```
