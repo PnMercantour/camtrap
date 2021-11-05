@@ -65,7 +65,8 @@ def processPath(path, root, output, image_output, tf_detector, first_frame, last
     image_dir = image_output / relative
     print(f'Output to {json_dir}')
     json_dir.mkdir(parents=True, exist_ok=True)
-    image_dir.mkdir(parents=True, exist_ok=True)
+    if dump:
+        image_dir.mkdir(parents=True, exist_ok=True)
     if path.is_file():
         processVideo(path, json_dir, image_dir, tf_detector,
                      first_frame, last_frame, pick, overwrite, dump)
@@ -74,7 +75,7 @@ def processPath(path, root, output, image_output, tf_detector, first_frame, last
             if p.is_file():
                 processVideo(p, json_dir,  image_dir, tf_detector,
                              first_frame, last_frame, pick, overwrite, dump)
-            if p.is_dir():
+            elif p.is_dir():
                 processPath(p, root, output, image_output, tf_detector,
                             first_frame, last_frame, pick, overwrite, dump)
 
