@@ -7,7 +7,6 @@ from pathlib import Path
 import humanfriendly
 from argparse import ArgumentParser
 from detection.run_tf_detector import TFDetector
-from detection import run_tf_detector_batch as md
 
 
 def processVideo(path, out_dir, empty_dir, other_dir, data_dir, tf_detector, first_frame, last_frame, pick):
@@ -120,4 +119,4 @@ if __name__ == '__main__':
 
     for path in args.video:
         processDirectory(path, args.root, args.output,  tf_detector, first_frame=args.first_frame,
-                                   last_frame=args.last_frame, pick=args.pick)
+                         last_frame=args.last_frame, pick=args.pick)
