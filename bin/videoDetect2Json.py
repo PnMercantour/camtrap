@@ -19,7 +19,7 @@ def processVideo(path, json_dir, image_dir, tf_detector, first_frame=0, last_fra
         print(path, 'not a file')
         return
     print(f'Processing video {path}')
-    if path.suffix != '.MP4':
+    if path.suffix not in ['.MP4', '.mp4']:
         print(path, 'unknown suffix')
         return
     cap = cv2.VideoCapture(str(path))

@@ -58,7 +58,23 @@ export MEGADETECTOR=<...>/microsoft/md_v4.1.0.pb
 Enregistre les métadonnées des fichiers source vidéo
 
 ```
-python bin/videoMetadata --root data/video data/video
+python bin/videoMetadata.py --help
+usage: videoMetadata.py [-h] [--overwrite | --no-overwrite] [-r ROOT] [-o OUTPUT] video [video ...]
+
+Batch processor to store video metadata.
+
+positional arguments:
+  video                 source video folder or file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --overwrite, --no-overwrite
+                        overwrite existing results (default: False)
+  -r ROOT, --root ROOT  base directory for source files
+  -o OUTPUT, --output OUTPUT
+                        base directory for video metadata
+
+python bin/videoMetadata.py --root /mnt/f "/mnt/f/Maille 6"
 ```
 
 ## videoDetect2Json
@@ -67,12 +83,58 @@ Inspecte récursivement les répertoires et les fichiers donnés en paramètre e
 
 ```
 python bin/videoDetect2Json.py --help
+usage: videoDetect2Json.py [-h] [-f FIRST_FRAME] [-l LAST_FRAME] [-p PICK] [--overwrite | --no-overwrite]
+                           [-d | --dump | --no-dump] [--detector_file DETECTOR_FILE] [-r ROOT] [-o OUTPUT]
+                           [-i IMAGE_OUTPUT]
+                           video [video ...]
+
+Batch processor for video files. Runs megadetector on each file then stores results into json files
+
+positional arguments:
+  video                 source video folder or file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f FIRST_FRAME, --first_frame FIRST_FRAME
+                        first frame
+  -l LAST_FRAME, --last_frame LAST_FRAME
+                        last frame
+  -p PICK, --pick PICK  pick every nth frame
+  --overwrite, --no-overwrite
+                        overwrite existing results (default: False)
+  -d, --dump, --no-dump
+                        dump images (default: False)
+  --detector_file DETECTOR_FILE
+  -r ROOT, --root ROOT  base directory for source files
+  -o OUTPUT, --output OUTPUT
+                        base directory for detection reports
+  -i IMAGE_OUTPUT, --image_output IMAGE_OUTPUT
+                        base directory for dumped images
+
+python bin/videoDetect2Json.py -p 30 -l 240 -r /mnt/f/ "/mnt/f/Maille 6"
+
 ```
+
+## annotate_image
+
+Construit une image annotée à partir d'un rapport de détection (produit par videoDetect2Json.py) et d'une image (obtenue avec l'option dump de videoDetect2Json.json).
+TODO : normaliser les arguments et construire à la volée les images sources.
+
+```
+python bin/annotate_image.py --help
+python bin/annotate_image.py -i data/frames data/detection/.../report.json output_directory
+```
+
+## jsonAnalyser
+
+Analyse et synthétise les rapports de détection sur les images.
 
 ### Exemple
 
 ```
-python bin/videoDetect2Json.py -l 240 -p 30 -r img img
+python bin/videoDetect2Json.py -d -r /Users/vincent/Pictures/ /Users/vincent/Pictures/videos_loups_LMD/
+python bin/videoMetadata.py -r /Users/vincent/Pictures/ /Users/vincent/Pictures/videos_loups_LMD/
+python bin/annotate_image.py -i data/frames/videos_loups_LMD/  data/detection/frames/videos_loups_LMD/2020-12-18_2\ loups_Couletta.mp4-1230.json foo
 ```
 
 ### Performances
@@ -83,10 +145,6 @@ Données de la Maille 6.
 
 1974 videos, 11801 images : environ 6 images par vidéo.
 Durée du traitement : en moyenne 6,35s par image.
-
-## jsonAnalyser
-
-Analyse et synthétise les rapports de détection sur les images.
 
 ## visualisation
 

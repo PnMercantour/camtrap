@@ -29,7 +29,7 @@ def processVideo(path, root, attr_dir, overwrite=False):
     if not path.is_file():
         print(path, 'not a file')
         return
-    if path.suffix != '.MP4':
+    if path.suffix not in ['.MP4', '.mp4']:
         print(path, 'unknown suffix')
         return
     print(f'Processing video {path}')
