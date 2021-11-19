@@ -14,7 +14,7 @@ import argparse
 from detection.run_tf_detector import TFDetector
 
 
-def processVideo(path, json_dir, image_dir, tf_detector, first_frame=0, last_frame=None, pick=None, overwrite=False, dump=False):
+def processVideo(path, relative, json_dir, image_dir, tf_detector, first_frame=0, last_frame=None, pick=None, overwrite=False, dump=False):
     if not path.is_file():
         print(path, 'not a file')
         return
@@ -33,7 +33,8 @@ def processVideo(path, json_dir, image_dir, tf_detector, first_frame=0, last_fra
     frame = first_frame
     while frame <= last_frame:
         image_file = f'{path.name}-{frame}.jpg'
-        print(f'Processing image {image_file}')
+        relative_image_path= relative / image_file
+        print(f'Processing image {relative_image_path}')
         json_file = json_dir / f'{path.name}-{frame}.json'
         if overwrite or not json_file.exists() or dump:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame)
@@ -44,7 +45,7 @@ def processVideo(path, json_dir, image_dir, tf_detector, first_frame=0, last_fra
                 # pil_image.show()
                 if overwrite or not json_file.exists():
                     result = tf_detector.generate_detections_one_image(
-                        pil_image, image_file)
+                        pil_image, str(relative_image_path))
                     with open(json_file, 'w') as f:
                         json.dump(result, f, indent=1)
                 if dump:
@@ -68,12 +69,12 @@ def processPath(path, root, output, image_output, tf_detector, first_frame, last
     if dump:
         image_dir.mkdir(parents=True, exist_ok=True)
     if path.is_file():
-        processVideo(path, json_dir, image_dir, tf_detector,
+        processVideo(path, relative, json_dir, image_dir, tf_detector,
                      first_frame, last_frame, pick, overwrite, dump)
     else:
         for p in path.iterdir():
             if p.is_file():
-                processVideo(p, json_dir,  image_dir, tf_detector,
+                processVideo(p, relative, json_dir,  image_dir, tf_detector,
                              first_frame, last_frame, pick, overwrite, dump)
             elif p.is_dir():
                 processPath(p, root, output, image_output, tf_detector,
