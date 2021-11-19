@@ -11,6 +11,8 @@ def decode_fourcc(cc):
 
 def videoMetadata(path, root=Path()):
     # TODO : retrieve the creation date from exif data.
+    # https://exiftool.org/TagNames/QuickTime.html
+    # exiftool -MediaCreateDate -MediaDuration -j -r <DIR>
     stat = path.stat()
     cap = cv.VideoCapture(str(path))
     attr = dict(path=str(path.relative_to(root)), size=stat.st_size, timestamp=stat.st_mtime,
