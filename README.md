@@ -22,11 +22,19 @@ git clone https://github.com/Microsoft/cameratraps -b tf1-compat
 git clone https://github.com/Microsoft/ai4eutils
 ```
 
-Télécharger le modèle megadetector pour tensorflow
-https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb
+Ajouter les bibliothèques cameratraps et ai4eutils au path python.
 
 ```
 export PYTHONPATH=<...>/microsoft/cameratraps:<...>/microsoft/ai4eutils
+```
+
+Télécharger le modèle megadetector pour tensorflow
+https://lilablobssc.blob.core.windows.net/models/camera_traps/megadetector/md_v4.1.0/md_v4.1.0.pb
+
+Exporter la variable d'environnement MEGADETECTOR qui est exploitée par les scripts PNM.
+
+```
+export MEGADETECTOR=<...>/microsoft/md_v4.1.0.pb
 ```
 
 ## opencv
@@ -37,7 +45,7 @@ https://pypi.org/project/opencv-python/
 pip install opencv-python
 ```
 
-### Exemple d'utilisation des scripts microsoft
+## Exemple d'utilisation des scripts microsoft
 
 ```
 python <...>/microsoft/cameratraps/detection/process_video.py --debug_max_frames 60 <...>/microsoft/md_v4.1.0.pb test/mon_image.MP4
@@ -47,11 +55,6 @@ python <...>/microsoft/cameratraps/detection/process_video.py --debug_max_frames
 
 ## Scripts PNM
 
-Exporter la variable d'environnement MEGADETECTOR
-
-```
-export MEGADETECTOR=<...>/microsoft/md_v4.1.0.pb
-```
 
 ## videoMetadata
 
