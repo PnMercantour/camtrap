@@ -176,3 +176,14 @@ Utiliser l'option --dump pour générer des images correspondant aux trames sél
 python bin/videoDetect2Json.py --dump data/video/test/IMG_0006.MP4
 python bin/annotate_image.py  -i data/frames/test data/detection/frames/test/IMG_0006.MP4-1814.json data/annotated_frames/test
 ```
+# Dashboard
+```
+pip install dash
+pip install pandas
+pip install -U scikit-image
+python bin/dashboard.py
+```
+
+video player
+https://community.plotly.com/t/how-to-use-html-video/37529
+https://community.plotly.com/t/adding-video-player/5303
