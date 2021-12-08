@@ -1,6 +1,5 @@
 import dash
-from dash import html, dcc
-from dash.dependencies import Input, Output, State
+from dash import html, dcc, Input, Output, State, callback_context
 import flask
 import base64
 from os import getenv
@@ -8,50 +7,129 @@ import argparse
 from pathlib import Path
 from dataFinder import *
 
-app = dash.Dash()
+app = dash.Dash(__name__, external_stylesheets=[
+                'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 server = app.server
 camtrap_root = Path(getenv('CAMTRAP_ROOT'))
 
+
 @server.route('/video/<path:path>')
 def serve_video(path):
-    print( f'Serving {camtrap_root/path}')
     return flask.send_from_directory(camtrap_root, path)
+
 
 list_of_images = [
     'img_1.png',
     'img_2.png'
 ]
 
+
+def recently_updated_maille(root):
+    "TODO: Returns the most recently visited Maille"
+    ids = df_ids(camtrap_root)
+    if ids is not None and len(ids) > 0:
+        return ids[0]
+    else:
+        return None
+
+
 app.layout = html.Div([
     dcc.Dropdown(
+        id='maille-dropdown',
+        options=[{'label': f'{i}: descripteur', 'value': i}
+                 for i in df_ids(camtrap_root)],
+        clearable=False,
+        value=recently_updated_maille(camtrap_root)),
+    dcc.Dropdown(
+        id='date-dropdown',
+        clearable=False,
+        options=[]
+    ),
+    html.Div([dcc.Dropdown(
+        id='file-dropdown',
+        clearable=False,
+        options=[]
+    ),
+        html.Button('Précédent', id='previous-file'),
+        html.Button('Suivant', id='next-file'),
+    ]),
+    html.Video(
+        controls=True,
+        id='movie_player',
+        #src = "https://www.w3schools.com/html/mov_bbb.mp4",
+        # src='/video/Maille 6/2020-03-11/IMG_0001.MP4',
+        src=None,
+        width=800,
+        autoPlay=True
+    ),
+    dcc.Dropdown(
         id='image-dropdown',
-        options=[{'label': i, 'value': 'dashboard/' + i} for i in list_of_images],
+        options=[{'label': i, 'value': 'dashboard/' + i}
+                 for i in list_of_images],
         # initially display the first entry in the list
         value='dashboard/' + list_of_images[0]
     ),
     html.Img(id='image'),
-    dcc.Dropdown(
-        id='mailles-dropdown',
-        options=[{'label': f'{i}: descripteur', 'value': i} for i in df_ids(camtrap_root)]
-    ),
-    dcc.Dropdown(
-        id='date-dropdown',
-        options=[]
-    ),
-    dcc.Dropdown(
-        id='file-dropdown',
-        options=[]
-    ),
-    html.Video(
-            controls = True,
-            id = 'movie_player',
-            #src = "https://www.w3schools.com/html/mov_bbb.mp4",
-            src = '/video/Maille 6/2020-03-11/IMG_0001.MP4',
-            width = 800,
-            autoPlay=True
-        ),
 ])
+
+
+@app.callback(
+    Output('date-dropdown', 'options'),
+    Input('maille-dropdown', 'value'))
+def update_date_dropdown(maille_id):
+    if maille_id is None:
+        return []
+    return [{'label': d, 'value': d} for d in df_dates(df_id_path(maille_id, camtrap_root))]
+
+
+@app.callback(
+    Output('date-dropdown', 'value'),
+    Input('date-dropdown', 'options'))
+def set_date_value(options):
+    if options is None or len(options) == 0:
+        return None
+    return options[0]['value']
+
+
+@app.callback(
+    Output('file-dropdown', 'options'),
+    Input('date-dropdown', 'value'),
+    State('maille-dropdown', 'value'))
+def update_file_dropdown(date, maille_id):
+    return [{'label': d, 'value': d} for d in df_assets(df_date_path(date, df_id_path(maille_id, camtrap_root)))]
+
+
+@app.callback(
+    Output('file-dropdown', 'value'),
+    Input('file-dropdown', 'options'),
+    State('file-dropdown', 'value'),
+    Input('previous-file', 'n_clicks'),
+    Input('next-file', 'n_clicks'),
+)
+def set_file_value(options, value, previous, next):
+    if options is None or len(options) == 0:
+        return None
+    changed_id = [p['prop_id'] for p in callback_context.triggered][0]
+    if 'next-file' in changed_id:
+        values = [item['value'] for item in options]
+        return values[min(values.index(value) + 1, len(values) - 1)]
+    if 'previous-file' in changed_id:
+        values = [item['value'] for item in options]
+        return values[max(values.index(value) - 1, 0)]
+    return options[0]['value']
+
+
+@app.callback(
+    Output('movie_player', 'src'),
+    Input('file-dropdown', 'value'),
+    State('date-dropdown', 'value'),
+    State('maille-dropdown', 'value'))
+def update_video_player(name, date, maille_id):
+    if name is not None and date is not None and maille_id is not None:
+        return str(Path('/video') / df_asset_path(name, df_date_path(date, df_id_path(maille_id, camtrap_root))).relative_to(camtrap_root))
+    else:
+        return None
 
 
 @app.callback(
@@ -63,21 +141,6 @@ def update_image_src(image_path):
     encoded_image = base64.b64encode(open(image_path, 'rb').read())
     return 'data:image/png;base64,{}'.format(encoded_image.decode())
 
-@app.callback(
-    Output('date-dropdown', 'options'),
-    Input('mailles-dropdown', 'value'))
-def update_date_dropdown(maille_id):
-    print('update_date_dropdown', maille_id)
-    return [{'label':d, 'value': d} for d in df_dates(df_id_path(maille_id, camtrap_root))]
-
-@app.callback(
-    Output('file-dropdown', 'options'),
-    Input('date-dropdown', 'value'),
-    State('mailles-dropdown', 'value'))
-def update_video_dropdown(date, maille_id):
-    print('update_video_dropdown', date, type(date), maille_id)
-    print(df_date_path(date, df_id_path(maille_id, camtrap_root)))
-    return [{'label':d, 'value': d} for d in df_assets(df_date_path(date, df_id_path(maille_id, camtrap_root)))]
 
 if __name__ == '__main__':
     app.run_server(debug=True)

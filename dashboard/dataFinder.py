@@ -7,6 +7,8 @@ asset: filename of a photo/video/audio file
 """
 
 from pathlib import Path
+from datetime import date
+
 
 def df_ids(root):
     "Sorted maille ids under root"
@@ -25,17 +27,20 @@ def df_id_path(id, root=Path('.')):
 
 
 def df_dates(id_path):
-    " Sorted list of visit dates for given Maille id path"
+    " Sorted list of visit dates for given Maille id path, most recent first"
     l = []
     for visit in id_path.iterdir():
-        l.append(visit.name)
+        try:
+            date.fromisoformat(visit.name)
+            l.append(visit.name)
+        except:
+            print(f'warning:df-dates:invalid repository: {visit}: ignored')
     l.sort(reverse=True)
     return l
 
 
 def df_date_path(date, id_path):
     "visit path from visit date and Maille path"
-    print('df_date_path', date)
     return id_path / date
 
 
