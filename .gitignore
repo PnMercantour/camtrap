@@ -1,4 +1,5 @@
 data
+tmp
 frames/
 output/
 img/
@@ -131,3 +132,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.vscode/settings.json

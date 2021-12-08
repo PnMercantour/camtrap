@@ -6,12 +6,14 @@ from os import getenv
 import argparse
 from pathlib import Path
 from dataFinder import *
+import analyse_simple
 
 app = dash.Dash(__name__, external_stylesheets=[
                 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 server = app.server
 camtrap_root = Path(getenv('CAMTRAP_ROOT'))
+data_root = Path('data/detection/frames')  # FIXME
 
 
 @server.route('/video/<path:path>')
@@ -35,6 +37,24 @@ def recently_updated_maille(root):
 
 
 app.layout = html.Div([
+    dcc.RadioItems(
+        id='ia-filter',
+        options=[
+            {'label': 'Toutes les vidéos', 'value': 'no'},
+            {'label': 'Détection automatique', 'value': 'analyse_simple'},
+            {'label': 'Vidéos rejetées (contrôle)',
+             'value': 'analyse_simple_control'}
+        ],
+        value='no'
+    ),
+    dcc.Slider(
+        id='threshold_slider',
+        min=0,
+        max=1,
+        step=0.02,
+        value=0.9,
+        tooltip={'placement': 'bottom', 'always_visible': True},
+    ),
     dcc.Dropdown(
         id='maille-dropdown',
         options=[{'label': f'{i}: descripteur', 'value': i}
@@ -54,6 +74,7 @@ app.layout = html.Div([
         html.Button('Précédent', id='previous-file'),
         html.Button('Suivant', id='next-file'),
     ]),
+    html.Div(id='video_counter'),
     html.Video(
         controls=True,
         id='movie_player',
@@ -61,6 +82,7 @@ app.layout = html.Div([
         # src='/video/Maille 6/2020-03-11/IMG_0001.MP4',
         src=None,
         width=800,
+        height=450,
         autoPlay=True
     ),
     dcc.Dropdown(
@@ -95,9 +117,28 @@ def set_date_value(options):
 @app.callback(
     Output('file-dropdown', 'options'),
     Input('date-dropdown', 'value'),
-    State('maille-dropdown', 'value'))
-def update_file_dropdown(date, maille_id):
-    return [{'label': d, 'value': d} for d in df_assets(df_date_path(date, df_id_path(maille_id, camtrap_root)))]
+    State('maille-dropdown', 'value'),
+    Input('ia-filter', 'value'),
+    Input('threshold_slider', 'value')
+)
+def update_file_dropdown(date, maille_id, ia_filter, threshold):
+    if ia_filter == 'no':
+        return [{'label': d, 'value': d} for d in df_assets(df_date_path(date, df_id_path(maille_id, camtrap_root)))]
+    if ia_filter == 'analyse_simple':
+        return [{'label': d, 'value': d} for d in analyse_simple.assets(df_date_path(date, df_id_path(maille_id, data_root)), threshold=threshold)]
+    if ia_filter == 'analyse_simple_control':
+        return [{'label': d, 'value': d} for d in analyse_simple.assets(df_date_path(date, df_id_path(maille_id, data_root)), threshold=threshold, control=True)]
+
+
+@app.callback(
+    Output('video_counter', 'children'),
+    Input('file-dropdown', 'options')
+)
+def set_counter_value(options):
+    if options is not None:
+        return [f'{len(options)} vidéos sélectionnées']
+    else:
+        return None
 
 
 @app.callback(
