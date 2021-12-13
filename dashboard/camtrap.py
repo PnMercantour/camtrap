@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from dataFinder import *
 import megaFilter
+from classifier import loadClassifier, storeClassifier
 
 app = dash.Dash(__name__, external_stylesheets=[
                 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
@@ -54,7 +55,7 @@ app.layout = html.Div([
             {'label': 'Vidéos rejetées (contrôle)',
              'value': 'megaFilter_fail'}
         ],
-        value='no'
+        value='megaFilter'
     ),
     dcc.Slider(
         id='in_threshold',
@@ -88,18 +89,27 @@ app.layout = html.Div([
         id='file-dropdown',
         clearable=False,
         options=[]),
-        html.Button('Précédent', id='previous-file'),
-        html.Button('Suivant', id='next-file'),
+        html.Button('Précédent', id='control:previous'),
+        html.Button('Suivant', id='control:next'),
+        html.Button('Loup', id='classif:loup'),
+        html.Button('Faune sauvage', id='classif:faune_sauvage'),
+        html.Button('Faune domestique', id='classif:faune_domestique'),
+        html.Button('Humains, véhicules', id='classif:other'),
+        html.Button('Vide', id='classif:empty'),
     ]),
     html.Div(id='video_counter'),
-    html.Video(
-        controls=True,
-        id='movie_player',
-        src=None,
-        width=960,
-        height=640,
-        autoPlay=True
-    ),
+    html.Div(children=[
+        html.Video(
+            controls=True,
+            id='movie_player',
+            src=None,
+            width=960,
+            height=640,
+            autoPlay=True
+        ),
+        html.Div(id='classif'),
+    ], style={'display': 'grid', 'grid-template-columns': 'repeat(5, 1fr)'}),
+
     html.Div(id='media_metadata', children=None),
     dcc.Dropdown(
         id='image-dropdown',
@@ -160,6 +170,7 @@ def update_file_dropdown(date, maille_id, ia_filter, in_threshold, out_threshold
 
 @ app.callback(
     Output('media_metadata', 'children'),
+    Output('classif', 'children'),
     Input('file-dropdown', 'value'),
     State('date-dropdown', 'value'),
     State('maille-dropdown', 'value'))
@@ -170,29 +181,45 @@ def update_metadata(name, date, maille_id):
             createDate = meta_data['QuickTime:CreateDate']
             duration = meta_data['QuickTime:Duration']
             fps = meta_data['QuickTime:VideoFrameRate']
-
-        return [f'Vidéo du {createDate}, ({duration} s à {fps} images/s)']
+        classif = loadClassifier(
+            data_root / 'classification' / 'video', maille_id, date, name)
+        return [f'Vidéo du {createDate}, ({duration} s à {fps} images/s)', str(classif)]
     else:
-        return None
+        return [None, None]
 
 
 @ app.callback(
     Output('file-dropdown', 'value'),
     Input('file-dropdown', 'options'),
     State('file-dropdown', 'value'),
-    Input('previous-file', 'n_clicks'),
-    Input('next-file', 'n_clicks'),
+    State('date-dropdown', 'value'),
+    State('maille-dropdown', 'value'),
+    Input('control:previous', 'n_clicks'),
+    Input('control:next', 'n_clicks'),
+    Input('classif:loup', 'n_clicks'),
+    Input('classif:faune_sauvage', 'n_clicks'),
+    Input('classif:faune_domestique', 'n_clicks'),
+    Input('classif:other', 'n_clicks'),
+    Input('classif:empty', 'n_clicks'),
 )
-def set_file_value(options, value, previous, next):
+def set_file_value(options, value, date, maille_id, previous, next, loup, faune_sauvage, faune_domestique, other, empty):
     if options is None or len(options) == 0:
         return None
     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
-    if 'next-file' in changed_id:
+    if 'control:next' in changed_id:
         values = [item['value'] for item in options]
         return values[min(values.index(value) + 1, len(values) - 1)]
-    if 'previous-file' in changed_id:
+    if 'control:previous' in changed_id:
         values = [item['value'] for item in options]
         return values[max(values.index(value) - 1, 0)]
+
+    if 'classif:loup' in changed_id:
+        path = data_root / 'classification' / 'video'
+        classif = loadClassifier(path, maille_id, date, value)
+        classif['loup'] = True,
+        storeClassifier(classif, path, maille_id, date, value),
+        values = [item['value'] for item in options]
+        return values[min(values.index(value) + 1, len(values) - 1)]
     return options[0]['value']
 
 
