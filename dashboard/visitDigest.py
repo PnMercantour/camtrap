@@ -55,6 +55,12 @@ def processData(from_path, to_path):
         processMaille(id, from_path, to_path)
 
 
+def readFromCache(path, id, date):
+    with (df_id_path(id, path) / (date + '.json')).open() as f:
+        digest = json.load(f)
+    return digest
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Build visit JSON digest reports.")

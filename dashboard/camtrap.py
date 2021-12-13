@@ -4,21 +4,30 @@ import flask
 import base64
 from os import getenv
 import argparse
+import json
 from pathlib import Path
 from dataFinder import *
-import analyse_simple
+import megaFilter
 
 app = dash.Dash(__name__, external_stylesheets=[
                 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 server = app.server
-camtrap_root = Path(getenv('CAMTRAP_ROOT'))
-data_root = Path('data/detection/frames')  # FIXME
+
+video_root = Path(getenv('CAMTRAP_VIDEO'))
+"Location of raw video files"
+
+data_root = Path('data')  # FIXME
+"""Location of processed files. Common subdirectories are:
+detection/frames
+detection/visits
+exiftool
+"""
 
 
 @server.route('/video/<path:path>')
 def serve_video(path):
-    return flask.send_from_directory(camtrap_root, path)
+    return flask.send_from_directory(video_root, path)
 
 
 list_of_images = [
@@ -29,7 +38,7 @@ list_of_images = [
 
 def recently_updated_maille(root):
     "TODO: Returns the most recently visited Maille"
-    ids = df_ids(camtrap_root)
+    ids = df_ids(root)
     if ids is not None and len(ids) > 0:
         return ids[0]
     else:
@@ -41,26 +50,35 @@ app.layout = html.Div([
         id='ia-filter',
         options=[
             {'label': 'Toutes les vidéos', 'value': 'no'},
-            {'label': 'Détection automatique', 'value': 'analyse_simple'},
+            {'label': 'Détection automatique', 'value': 'megaFilter'},
             {'label': 'Vidéos rejetées (contrôle)',
-             'value': 'analyse_simple_control'}
+             'value': 'megaFilter_fail'}
         ],
         value='no'
     ),
     dcc.Slider(
-        id='threshold_slider',
+        id='in_threshold',
         min=0,
         max=1,
         step=0.02,
-        value=0.9,
+        value=0.96,
+        tooltip={'placement': 'bottom', 'always_visible': True},
+    ),
+    dcc.Slider(
+        id='out_threshold',
+        min=0,
+        max=1,
+        step=0.02,
+        value=0.80,
         tooltip={'placement': 'bottom', 'always_visible': True},
     ),
     dcc.Dropdown(
         id='maille-dropdown',
         options=[{'label': f'{i}: descripteur', 'value': i}
-                 for i in df_ids(camtrap_root)],
+                 for i in df_ids(data_root / 'detection' / 'frames')],
         clearable=False,
-        value=recently_updated_maille(camtrap_root)),
+        value=recently_updated_maille(data_root / 'detection' / 'frames')
+    ),
     dcc.Dropdown(
         id='date-dropdown',
         clearable=False,
@@ -69,8 +87,7 @@ app.layout = html.Div([
     html.Div([dcc.Dropdown(
         id='file-dropdown',
         clearable=False,
-        options=[]
-    ),
+        options=[]),
         html.Button('Précédent', id='previous-file'),
         html.Button('Suivant', id='next-file'),
     ]),
@@ -78,13 +95,12 @@ app.layout = html.Div([
     html.Video(
         controls=True,
         id='movie_player',
-        #src = "https://www.w3schools.com/html/mov_bbb.mp4",
-        # src='/video/Maille 6/2020-03-11/IMG_0001.MP4',
         src=None,
-        width=800,
-        height=450,
+        width=960,
+        height=640,
         autoPlay=True
     ),
+    html.Div(id='media_metadata', children=None),
     dcc.Dropdown(
         id='image-dropdown',
         options=[{'label': i, 'value': 'dashboard/' + i}
@@ -102,7 +118,7 @@ app.layout = html.Div([
 def update_date_dropdown(maille_id):
     if maille_id is None:
         return []
-    return [{'label': d, 'value': d} for d in df_dates(df_id_path(maille_id, camtrap_root))]
+    return [{'label': d, 'value': d} for d in df_dates(df_id_path(maille_id, data_root / 'detection' / 'frames'))]
 
 
 @app.callback(
@@ -116,32 +132,51 @@ def set_date_value(options):
 
 @app.callback(
     Output('file-dropdown', 'options'),
+    Output('video_counter', 'children'),
     Input('date-dropdown', 'value'),
     State('maille-dropdown', 'value'),
     Input('ia-filter', 'value'),
-    Input('threshold_slider', 'value')
+    Input('in_threshold', 'value'),
+    Input('out_threshold', 'value')
 )
-def update_file_dropdown(date, maille_id, ia_filter, threshold):
+def update_file_dropdown(date, maille_id, ia_filter, in_threshold, out_threshold):
     if ia_filter == 'no':
-        return [{'label': d, 'value': d} for d in df_assets(df_date_path(date, df_id_path(maille_id, camtrap_root)))]
-    if ia_filter == 'analyse_simple':
-        return [{'label': d, 'value': d} for d in analyse_simple.assets(df_date_path(date, df_id_path(maille_id, data_root)), threshold=threshold)]
-    if ia_filter == 'analyse_simple_control':
-        return [{'label': d, 'value': d} for d in analyse_simple.assets(df_date_path(date, df_id_path(maille_id, data_root)), threshold=threshold, control=True)]
+        options = [{'label': d, 'value': d} for d in df_assets(
+            df_date_path(date, df_id_path(maille_id, video_root)))]
+        return [options, f'{len(options)} vidéos']
+    if ia_filter in ['megaFilter', 'megaFilter_fail']:
+        l_pass, l_fail = megaFilter.filter(
+            data_root / 'detection' / 'visits', maille_id, date, in_threshold, out_threshold)
+        video_count = len(l_pass) + len(l_fail)
+        if ia_filter == 'megaFilter':
+            l_out = l_pass
+            message = f'{len(l_out)} vidéos retenues sur {video_count}'
+        else:
+            l_out = l_fail
+            message = f'{len(l_out)} vidéos rejetées sur {video_count}'
+        return [[{'label': d, 'value': d} for d in l_out], message]
+    raise ValueError(ia_filter)
 
 
-@app.callback(
-    Output('video_counter', 'children'),
-    Input('file-dropdown', 'options')
-)
-def set_counter_value(options):
-    if options is not None:
-        return [f'{len(options)} vidéos sélectionnées']
+@ app.callback(
+    Output('media_metadata', 'children'),
+    Input('file-dropdown', 'value'),
+    State('date-dropdown', 'value'),
+    State('maille-dropdown', 'value'))
+def update_metadata(name, date, maille_id):
+    if name is not None and date is not None and maille_id is not None:
+        with (df_date_path(date, df_id_path(maille_id, data_root / 'exiftool')) / (name + '.json')).open() as f:
+            meta_data = json.load(f)[0]
+            createDate = meta_data['QuickTime:CreateDate']
+            duration = meta_data['QuickTime:Duration']
+            fps = meta_data['QuickTime:VideoFrameRate']
+
+        return [f'Vidéo du {createDate}, ({duration} s à {fps} images/s)']
     else:
         return None
 
 
-@app.callback(
+@ app.callback(
     Output('file-dropdown', 'value'),
     Input('file-dropdown', 'options'),
     State('file-dropdown', 'value'),
@@ -161,19 +196,19 @@ def set_file_value(options, value, previous, next):
     return options[0]['value']
 
 
-@app.callback(
+@ app.callback(
     Output('movie_player', 'src'),
     Input('file-dropdown', 'value'),
     State('date-dropdown', 'value'),
     State('maille-dropdown', 'value'))
 def update_video_player(name, date, maille_id):
     if name is not None and date is not None and maille_id is not None:
-        return str(Path('/video') / df_asset_path(name, df_date_path(date, df_id_path(maille_id, camtrap_root))).relative_to(camtrap_root))
+        return str(Path('/video') / df_asset_path(name, df_date_path(date, df_id_path(maille_id, video_root))).relative_to(video_root))
     else:
         return None
 
 
-@app.callback(
+@ app.callback(
     dash.dependencies.Output('image', 'src'),
     [dash.dependencies.Input('image-dropdown', 'value')])
 def update_image_src(image_path):
