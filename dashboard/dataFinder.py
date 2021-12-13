@@ -1,9 +1,9 @@
-"""Utility functions to access raw data files.
+"""Utility functions to access raw and processed data files.
 Hierarchical data storage:
 root: root path of the repository,
 id: #id of a Maille, relative path name from root is 'Maille <id>'
 date: date of a visit, relative path name from Maille is an ISO formatted date string 'YYYY-mm-DD'
-asset: filename of a photo/video/audio file
+asset: filename of a photo/video/audio/json file
 """
 
 from pathlib import Path
