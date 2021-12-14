@@ -1,5 +1,6 @@
 import dash
 from dash import html, dcc, Input, Output, State, callback_context
+from dash.exceptions import PreventUpdate
 import flask
 import base64
 from os import getenv
@@ -24,7 +25,8 @@ detection/frames
 detection/visits
 exiftool
 """
-
+with Path("config/users.json").open() as f:
+    camtrap_users=json.load(f)
 
 @server.route('/video/<path:path>')
 def serve_video(path):
@@ -47,6 +49,10 @@ def recently_updated_maille(root):
 
 
 app.layout = html.Div([
+    html.Div([
+        "Identifiez-vous",
+        dcc.Dropdown(id="user", value="guest", options=[o for o in camtrap_users if "Invité" in o["label"]], clearable=False)
+    ]),
     dcc.RadioItems(
         id='ia-filter',
         options=[
@@ -121,6 +127,14 @@ app.layout = html.Div([
     html.Img(id='image'),
 ])
 
+@app.callback(
+    Output("user", "options"),
+    Input("user", "search_value")
+)
+def findUser(search_value):
+    if not search_value:
+        raise PreventUpdate
+    return [o for o in camtrap_users if search_value in o["label"]]
 
 @app.callback(
     Output('date-dropdown', 'options'),
