@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import dash
 from dash import html, dcc, Input, Output, State, callback_context
 from dash.exceptions import PreventUpdate
@@ -11,22 +12,42 @@ from dataFinder import *
 import megaFilter
 from classifier import loadClassifier, storeClassifier
 
+project_root = Path(__file__).parent.parent.resolve()
+load_dotenv(project_root / '.env')
+load_dotenv(project_root / 'config/default_config')
+
+data_root = project_root / getenv('CAMTRAP_DATA')
+"Location of processed files"
+
+video_root = project_root / getenv('CAMTRAP_VIDEO')
+"Location of raw video files"
+
+try:
+    with (project_root / "config/users.json").open() as f:
+        camtrap_users = json.load(f)
+except:
+    if (project_root / "config/users.json").exists():
+        print(
+            'ERROR: config/users.json could not be parsed, either remove or fix this file')
+        exit(1)
+    else:
+        print('WARNING: config/users.json not found')
+    camtrap_users = []
+camtrap_users.append({"label": "Invité", "value": "guest"})
+
+print(f"""
+camtrap dashboard
+project root: {project_root}
+video root:{video_root}
+data root:{data_root}
+{len(camtrap_users)} registered user(s)
+""")
+
 app = dash.Dash(__name__, external_stylesheets=[
                 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 server = app.server
 
-video_root = Path(getenv('CAMTRAP_VIDEO'))
-"Location of raw video files"
-
-data_root = Path('data')  # FIXME
-"""Location of processed files. Common subdirectories are:
-detection/frames
-detection/visits
-exiftool
-"""
-with Path("config/users.json").open() as f:
-    camtrap_users=json.load(f)
 
 @server.route('/video/<path:path>')
 def serve_video(path):
@@ -51,17 +72,19 @@ def recently_updated_maille(root):
 app.layout = html.Div([
     html.Div([
         "Identifiez-vous",
-        dcc.Dropdown(id="user", value="guest", options=[o for o in camtrap_users if "Invité" in o["label"]], clearable=False)
+        dcc.Dropdown(id="user", value="guest", options=[
+                     o for o in camtrap_users if "Invité" in o["label"]], clearable=False)
     ]),
     dcc.RadioItems(
         id='ia-filter',
         options=[
             {'label': 'Toutes les vidéos', 'value': 'no'},
-            {'label': 'Détection automatique', 'value': 'megaFilter'},
+            {'label': 'Toutes les vidéos analysées', 'value': 'megaFilter:all'},
+            {'label': 'Détection automatique', 'value': 'megaFilter:pass'},
             {'label': 'Vidéos rejetées (contrôle)',
-             'value': 'megaFilter_fail'}
+             'value': 'megaFilter:rejected'}
         ],
-        value='megaFilter'
+        value='megaFilter:pass'
     ),
     dcc.Slider(
         id='in_threshold',
@@ -119,13 +142,14 @@ app.layout = html.Div([
     html.Div(id='media_metadata', children=None),
     dcc.Dropdown(
         id='image-dropdown',
-        options=[{'label': i, 'value': 'dashboard/' + i}
+        options=[{'label': i, 'value': i}
                  for i in list_of_images],
         # initially display the first entry in the list
-        value='dashboard/' + list_of_images[0]
+        value=list_of_images[0]
     ),
     html.Img(id='image'),
 ])
+
 
 @app.callback(
     Output("user", "options"),
@@ -135,6 +159,15 @@ def findUser(search_value):
     if not search_value:
         raise PreventUpdate
     return [o for o in camtrap_users if search_value in o["label"]]
+
+
+@app.callback(
+    Output('classif:loup', 'disabled'),
+    Input('user', 'value')
+)
+def buttonEnabler(user):
+    return (user is None or user == 'guest')
+
 
 @app.callback(
     Output('date-dropdown', 'options'),
@@ -168,15 +201,19 @@ def update_file_dropdown(date, maille_id, ia_filter, in_threshold, out_threshold
         options = [{'label': d, 'value': d} for d in df_assets(
             df_date_path(date, df_id_path(maille_id, video_root)))]
         return [options, f'{len(options)} vidéos']
-    if ia_filter in ['megaFilter', 'megaFilter_fail']:
-        l_pass, l_fail = megaFilter.filter(
+    if ia_filter == 'megaFilter:all':
+        l = megaFilter.processed(
+            data_root / 'detection'/'visits', maille_id, date)
+        return [[{'label': name, 'value': name} for name in l], f'{len(l)} vidéos analysées']
+    if ia_filter in ['megaFilter:pass', 'megaFilter:rejected']:
+        l_pass, l_rejected = megaFilter.filter(
             data_root / 'detection' / 'visits', maille_id, date, in_threshold, out_threshold)
-        video_count = len(l_pass) + len(l_fail)
-        if ia_filter == 'megaFilter':
+        video_count = len(l_pass) + len(l_rejected)
+        if ia_filter == 'megaFilter:pass':
             l_out = l_pass
             message = f'{len(l_out)} vidéos retenues sur {video_count}'
         else:
-            l_out = l_fail
+            l_out = l_rejected
             message = f'{len(l_out)} vidéos rejetées sur {video_count}'
         return [[{'label': d, 'value': d} for d in l_out], message]
     raise ValueError(ia_filter)
@@ -252,10 +289,9 @@ def update_video_player(name, date, maille_id):
 @ app.callback(
     dash.dependencies.Output('image', 'src'),
     [dash.dependencies.Input('image-dropdown', 'value')])
-def update_image_src(image_path):
-    # print the image_path to confirm the selection is as expected
-    print('current image_path = {}'.format(image_path))
-    encoded_image = base64.b64encode(open(image_path, 'rb').read())
+def update_image_src(name):
+    encoded_image = base64.b64encode(
+        open(project_root / 'dashboard' / name, 'rb').read())
     return 'data:image/png;base64,{}'.format(encoded_image.decode())
 
 

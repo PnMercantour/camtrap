@@ -12,3 +12,10 @@ def filter(path, id, date, in_threshold=0.96, out_threshold=0.7):
         l_control.sort()
         l.sort()
     return l, l_control
+
+
+def processed(path, id, date):
+    "video files which have been megadetected"
+    l = list(visitDigest.readFromCache(path, id, date).keys())
+    l.sort()
+    return l
