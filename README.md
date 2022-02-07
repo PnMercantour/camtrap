@@ -8,7 +8,7 @@ https://github.com/microsoft/CameraTraps/blob/master/megadetector.md
 python3.9 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip
-pip install tensorflow pillow humanfriendly matplotlib tqdm jsonpickle statistics requests
+pip install tensorflow pillow humanfriendly matplotlib tqdm jsonpickle statistics requests python-dotenv
 ```
 
 ## Utilisation de megadetector
@@ -117,6 +117,10 @@ optional arguments:
 python bin/videoDetect2Json.py -p 30 -l 240 -r /mnt/f/ "/mnt/f/Maille 6"
 
 ```
+# dump d'une image
+Le dump est une option de videoDetect2Json
+
+python bin/videoDetect2Json.py -p 30 -l 240 -d -r /home/vprunet/Vidéos /home/vprunet/Vidéos/Maille\ 6/2020-05-14/IMG_0095.MP4 
 
 ## annotate_image
 
@@ -127,6 +131,9 @@ TODO : normaliser les arguments et construire à la volée les images sources.
 python bin/annotate_image.py --help
 python bin/annotate_image.py -i data/frames data/detection/.../report.json output_directory
 ```
+python bin/annotate_image.py -i data/frames data/detection/frames/Maille\ 6/2020-05-14/IMG_0095.MP4-0.json foo
+
+python bin/annotate_image.py -i data/frames data/detection/frames/Maille\ 6/2020-05-14/IMG_0095.MP4-240.json foo
 
 ## jsonAnalyser
 
@@ -181,9 +188,18 @@ python bin/annotate_image.py  -i data/frames/test data/detection/frames/test/IMG
 pip install dash
 pip install pandas
 pip install -U scikit-image
+pip install python-dotenv
 python bin/dashboard.py
 ```
+Enregistrer les préférences (CAMTRAP_VIDEO, ...) dans .env à la racine du projet.
 
+Préparer les résumés d'analyse avec visitDigest
+python dashboard/visitDigest.py 
+
+Lancer le serveur dash
+python dashboard/camtrap.py
+
+# Divers
 video player
 https://community.plotly.com/t/how-to-use-html-video/37529
 https://community.plotly.com/t/adding-video-player/5303
