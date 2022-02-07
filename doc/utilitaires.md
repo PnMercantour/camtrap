@@ -2,6 +2,11 @@
 
 ## exiftool
 
+### Installation
+
+https://exiftool.org/install.html#Unix
+
+
 ```
 exiftool -fast -json -groupNames  --printConv --composite -ext mp4 -textOut "data/exiftool/%:3d%f.%e.json" -recurse /mnt/f/Maille\ 6/
 
@@ -14,6 +19,12 @@ exiftool -csv -fileOrder createDate --printconv -sourcefile -createdate -duratio
 
 `%:3d` a pour effet de supprimer /mnt/f à l'écriture des fichiers.
 Les fichiers json référencent le chemin complet du fichier source.
+
+```
+cd <root>
+exiftool -fast -json -groupNames  --printConv --composite -ext mp4 -textOut "/home/vprunet/src/PNM/camtrap/data/exiftool/%d%F.json" -recurse Maille\ 6/
+``̀
+
 
 ## recherche de véhicules
 
