@@ -1,11 +1,9 @@
-from dotenv import load_dotenv
-import dash
-from dash import html, dcc, Input, Output, State, callback_context
+from dash import Dash, html, dcc, Input, Output, State, callback_context
 from dash.exceptions import PreventUpdate
 import flask
-import base64
+import dash_bootstrap_components as dbc
+from dotenv import load_dotenv
 from os import getenv
-import argparse
 import json
 from pathlib import Path
 from dataFinder import *
@@ -43,8 +41,9 @@ data root:{data_root}
 {len(camtrap_users)} registered user(s)
 """)
 
-app = dash.Dash(__name__, external_stylesheets=[
-                'https://codepen.io/chriddyp/pen/bWLwgP.css'])
+app = Dash(
+    external_stylesheets=[dbc.themes.BOOTSTRAP]
+)
 
 server = app.server
 
@@ -52,12 +51,6 @@ server = app.server
 @server.route('/video/<path:path>')
 def serve_video(path):
     return flask.send_from_directory(video_root, path)
-
-
-list_of_images = [
-    'img_1.png',
-    'img_2.png'
-]
 
 
 def recently_updated_maille(root):
@@ -69,202 +62,249 @@ def recently_updated_maille(root):
         return None
 
 
-app.layout = html.Div([
-    html.Div([
-        "Identifiez-vous",
-        dcc.Dropdown(id="user", value="guest", options=[
-                     o for o in camtrap_users if "Invité" in o["label"]], clearable=False)
-    ]),
-    dcc.RadioItems(
-        id='ia-filter',
+video_filter = [dbc.RadioItems(
+    options=[
+        {'label': 'toutes les vidéos', 'value': 'classifier:all'},
+        {'label': 'vidéos non classifiées', 'value': 'classifier:false'},
+        {'label': "vidéos classifiées", "value": 'classifier:true'}]),
+    dcc.Dropdown(
+        multi=True,
         options=[
-            {'label': 'Toutes les vidéos', 'value': 'no'},
-            {'label': 'Toutes les vidéos analysées', 'value': 'megaFilter:all'},
-            {'label': 'Détection automatique', 'value': 'megaFilter:pass'},
-            {'label': 'Vidéos rejetées (contrôle)',
-             'value': 'megaFilter:rejected'}
-        ],
-        value='megaFilter:pass'
-    ),
-    dcc.Slider(
-        id='in_threshold',
-        min=0,
-        max=1,
-        step=0.02,
-        value=0.96,
-        tooltip={'placement': 'bottom', 'always_visible': True},
-    ),
-    dcc.Slider(
-        id='out_threshold',
-        min=0,
-        max=1,
-        step=0.02,
-        value=0.80,
-        tooltip={'placement': 'bottom', 'always_visible': True},
-    ),
-    dcc.Dropdown(
-        id='maille-dropdown',
-        options=[{'label': f'{i}: descripteur', 'value': i}
+            {'label': 'Loup', 'value': 'loup'},
+            {'label': 'sanglier', 'value': 'sanglier'},
+            {'label': 'Faune sauvage', 'value': 'faune_sauvage'},
+            {'label': 'Faune domestique', 'value': 'faune_domestique'}
+        ])]
+
+detection_card = dbc.Card([
+    dbc.CardHeader("Détecter"),
+    dbc.CardBody([
+        dcc.Dropdown(
+            id="detection:source", clearable=False,
+            options=[{'label': 'Toutes les vidéos', 'value': 'all'}, {
+                'label': 'MegaDetector', 'value': 'megadetector'}], value='megadetector',
+        ),
+        dcc.Dropdown(
+            id="detection:megadetector",
+            clearable=False,
+            value='pass',
+            options=[
+                {'label': "Toutes les vidéos", "value": 'all'},
+                {'label': 'Auto détection', 'value': 'pass'},
+                {'label': 'Corbeille', 'value': 'reject'},
+            ]),
+        dbc.Label('Seuils de détection'),
+        dcc.Slider(
+            id='detection:megadetector:in_threshold',
+            min=0,
+            max=1,
+            step=0.02,
+            value=0.96,
+            tooltip={'placement': 'bottom', 'always_visible': True},
+        ),
+        dcc.Slider(
+            id='detection:megadetector:out_threshold',
+            min=0,
+            max=1,
+            step=0.02,
+            value=0.80,
+            tooltip={'placement': 'bottom', 'always_visible': True},
+        ),
+    ])
+])
+
+
+media_card = dbc.Card([
+    dbc.CardHeader("Sélectionner"),
+    dbc.CardBody([
+        dbc.Label("Maille"),
+        dcc.Dropdown(
+            id='select:maille',
+            clearable=False,
+            options=[{'label': f'{i}: descripteur', 'value': i}
                  for i in df_ids(data_root / 'detection' / 'frames')],
-        clearable=False,
-        value=recently_updated_maille(data_root / 'detection' / 'frames')
-    ),
-    dcc.Dropdown(
-        id='date-dropdown',
-        clearable=False,
-        options=[]
-    ),
-    html.Div([dcc.Dropdown(
-        id='file-dropdown',
-        clearable=False,
-        options=[]),
-        html.Button('Précédent', id='control:previous'),
-        html.Button('Suivant', id='control:next'),
-        html.Button('Loup', id='classif:loup'),
-        html.Button('Faune sauvage', id='classif:faune_sauvage'),
-        html.Button('Faune domestique', id='classif:faune_domestique'),
-        html.Button('Humains, véhicules', id='classif:other'),
-        html.Button('Vide', id='classif:empty'),
-    ]),
-    html.Div(id='video_counter'),
-    html.Div(children=[
+            value=recently_updated_maille(data_root / 'detection' / 'frames')
+        ),
+        dbc.Label("Visite"),
+        dcc.Dropdown(
+            id='select:visit',
+            clearable=False,
+            options=[],
+        ),
+        dbc.Label('Vidéo'),
+        dcc.Dropdown(
+            id='select:file',
+            clearable=False,
+            options=[]
+        ),
+    ])
+])
+
+filter_card = dbc.Card([
+    dbc.CardHeader("Filtrer"),
+    dbc.CardBody([
+        dbc.Label("par date"),
+        dcc.DatePickerRange(
+            display_format='Y-M-D', start_date_placeholder_text='début', end_date_placeholder_text='fin', clearable=True),
+        dbc.Label("par espèce"),
+        dcc.Dropdown(
+            multi=True,
+            options=[
+                {'label': 'Loup', 'value': 'loup'},
+                {'label': 'sanglier', 'value': 'sanglier'},
+                {'label': 'Faune sauvage', 'value': 'faune_sauvage'},
+                {'label': 'Faune domestique', 'value': 'faune_domestique'}
+            ])
+    ])
+])
+
+
+params = [
+    media_card,
+    filter_card,
+    detection_card,
+]
+
+video_controls = dbc.Row([
+    dbc.Col(html.Button('Précédent', id='video_control:previous'), width=2),
+    dbc.Col(html.Button('Suivant', id='video_control:next'), width=2),
+    dbc.Col(html.Button('Loup', id='video_control:loup'), width=2),
+
+], justify="center",
+)
+
+map_tab = dbc.Tab(
+    tab_id='map',
+    label='Carte',
+)
+video_tab = dbc.Tab(
+    tab_id='video',
+    label='Vidéo',
+    style={'height': 700},
+    children=[
         html.Video(
             controls=True,
             id='movie_player',
             src=None,
-            width=960,
-            height=640,
+            # width=960,
+            height=500,
             autoPlay=True
         ),
-        html.Div(id='classif'),
-    ], style={'display': 'grid', 'grid-template-columns': 'repeat(5, 1fr)'}),
+        video_controls,
+    ])
 
-    html.Div(id='media_metadata', children=None),
-    dcc.Dropdown(
-        id='image-dropdown',
-        options=[{'label': i, 'value': i}
-                 for i in list_of_images],
-        # initially display the first entry in the list
-        value=list_of_images[0]
+image_tab = dbc.Tab(
+    tab_id='image',
+    label='Images',
+    children=dbc.Carousel(items=[], style={'height': 500})
+)
+
+stats_tab = dbc.Tab(
+    tab_id='stats',
+    label='Statistiques'
+)
+
+tabs = dbc.Tabs([
+    map_tab,
+    video_tab,
+    image_tab,
+    stats_tab,
+],
+    active_tab='video',
+)
+
+info_string = html.Div(id='file_info')
+
+app.layout = dbc.Container([
+    html.H1("Camtrap - Pièges photos du Parc national du Mercantour"),
+    html.Hr(),
+    dbc.Row(
+        [
+            dbc.Col(params, md=2),
+            dbc.Col([info_string, tabs], md=10),
+        ],
+        align="top",
     ),
-    html.Img(id='image'),
-])
-
-
-@app.callback(
-    Output("user", "options"),
-    Input("user", "search_value")
+],
+    fluid=True,
 )
-def findUser(search_value):
-    if not search_value:
-        raise PreventUpdate
-    return [o for o in camtrap_users if search_value in o["label"]]
 
 
 @app.callback(
-    Output('classif:loup', 'disabled'),
-    Input('user', 'value')
-)
-def buttonEnabler(user):
-    return (user is None or user == 'guest')
-
-
-@app.callback(
-    Output('date-dropdown', 'options'),
-    Input('maille-dropdown', 'value'))
-def update_date_dropdown(maille_id):
+    Output('select:visit', 'options'),
+    Input('select:maille', 'value'))
+def update_visit_dropdown(maille_id):
     if maille_id is None:
         return []
     return [{'label': d, 'value': d} for d in df_dates(df_id_path(maille_id, data_root / 'detection' / 'frames'))]
 
 
 @app.callback(
-    Output('date-dropdown', 'value'),
-    Input('date-dropdown', 'options'))
-def set_date_value(options):
+    Output('select:visit', 'value'),
+    Input('select:visit', 'options'))
+def set_visit_value(options):
     if options is None or len(options) == 0:
         return None
     return options[0]['value']
 
 
 @app.callback(
-    Output('file-dropdown', 'options'),
-    Output('video_counter', 'children'),
-    Input('date-dropdown', 'value'),
-    State('maille-dropdown', 'value'),
-    Input('ia-filter', 'value'),
-    Input('in_threshold', 'value'),
-    Input('out_threshold', 'value')
+    Output('select:file', 'options'),
+    Output('file_info', 'children'),
+    Input('select:visit', 'value'),
+    State('select:maille', 'value'),
+    Input('detection:source', 'value'),
+    Input('detection:megadetector', 'value'),
+    Input('detection:megadetector:in_threshold', 'value'),
+    Input('detection:megadetector:out_threshold', 'value')
 )
-def update_file_dropdown(date, maille_id, ia_filter, in_threshold, out_threshold):
-    if ia_filter == 'no':
+def update_file_dropdown(date, maille_id, source, megadetector, in_threshold, out_threshold):
+    if source == 'all':
         options = [{'label': d, 'value': d} for d in df_assets(
             df_date_path(date, df_id_path(maille_id, video_root)))]
         return [options, f'{len(options)} vidéos']
-    if ia_filter == 'megaFilter:all':
-        l = megaFilter.processed(
-            data_root / 'detection'/'visits', maille_id, date)
-        return [[{'label': name, 'value': name} for name in l], f'{len(l)} vidéos analysées']
-    if ia_filter in ['megaFilter:pass', 'megaFilter:rejected']:
-        l_pass, l_rejected = megaFilter.filter(
-            data_root / 'detection' / 'visits', maille_id, date, in_threshold, out_threshold)
-        video_count = len(l_pass) + len(l_rejected)
-        if ia_filter == 'megaFilter:pass':
-            l_out = l_pass
-            message = f'{len(l_out)} vidéos retenues sur {video_count}'
-        else:
-            l_out = l_rejected
-            message = f'{len(l_out)} vidéos rejetées sur {video_count}'
-        return [[{'label': d, 'value': d} for d in l_out], message]
-    raise ValueError(ia_filter)
+    if source == 'megadetector':
+        if megadetector == 'all':
+            l = megaFilter.processed(
+                data_root / 'detection'/'visits', maille_id, date)
+            return [[{'label': name, 'value': name} for name in l], f'{len(l)} vidéos analysées']
+        if megadetector in ['pass', 'reject']:
+            l_pass, l_rejected = megaFilter.filter(
+                data_root / 'detection' / 'visits', maille_id, date, in_threshold, out_threshold)
+            video_count = len(l_pass) + len(l_rejected)
+            if megadetector == 'pass':
+                l_out = l_pass
+                message = f'{len(l_out)} vidéos retenues sur {video_count}'
+            else:
+                l_out = l_rejected
+                message = f'{len(l_out)} vidéos rejetées sur {video_count}'
+            return [[{'label': d, 'value': d} for d in l_out], message]
+    print('something wrong with source', source, megadetector)
+    raise ValueError(source)
 
 
 @ app.callback(
-    Output('media_metadata', 'children'),
-    Output('classif', 'children'),
-    Input('file-dropdown', 'value'),
-    State('date-dropdown', 'value'),
-    State('maille-dropdown', 'value'))
-def update_metadata(name, date, maille_id):
-    if name is not None and date is not None and maille_id is not None:
-        with (df_date_path(date, df_id_path(maille_id, data_root / 'exiftool')) / (name + '.json')).open() as f:
-            meta_data = json.load(f)[0]
-            createDate = meta_data['QuickTime:CreateDate']
-            duration = meta_data['QuickTime:Duration']
-            fps = meta_data['QuickTime:VideoFrameRate']
-        classif = loadClassifier(
-            data_root / 'classification' / 'video', maille_id, date, name)
-        return [f'Vidéo du {createDate}, ({duration} s à {fps} images/s)', str(classif)]
-    else:
-        return [None, None]
-
-
-@ app.callback(
-    Output('file-dropdown', 'value'),
-    Input('file-dropdown', 'options'),
-    State('file-dropdown', 'value'),
-    State('date-dropdown', 'value'),
-    State('maille-dropdown', 'value'),
-    Input('control:previous', 'n_clicks'),
-    Input('control:next', 'n_clicks'),
-    Input('classif:loup', 'n_clicks'),
-    Input('classif:faune_sauvage', 'n_clicks'),
-    Input('classif:faune_domestique', 'n_clicks'),
-    Input('classif:other', 'n_clicks'),
-    Input('classif:empty', 'n_clicks'),
+    Output('select:file', 'value'),
+    Input('select:file', 'options'),
+    State('select:file', 'value'),
+    State('select:visit', 'value'),
+    State('select:maille', 'value'),
+    Input('video_control:previous', 'n_clicks'),
+    Input('video_control:next', 'n_clicks'),
+    Input('video_control:loup', 'n_clicks'),
 )
-def set_file_value(options, value, date, maille_id, previous, next, loup, faune_sauvage, faune_domestique, other, empty):
+def set_file_value(options, value, date, maille_id, previous, next, loup):
     if options is None or len(options) == 0:
         return None
     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
-    if 'control:next' in changed_id:
+    if 'video_control:next' in changed_id:
         values = [item['value'] for item in options]
         return values[min(values.index(value) + 1, len(values) - 1)]
-    if 'control:previous' in changed_id:
+    if 'video_control:previous' in changed_id:
         values = [item['value'] for item in options]
         return values[max(values.index(value) - 1, 0)]
 
-    if 'classif:loup' in changed_id:
+    if 'video_control:loup' in changed_id:
         path = data_root / 'classification' / 'video'
         classif = loadClassifier(path, maille_id, date, value)
         classif['loup'] = True,
@@ -276,9 +316,9 @@ def set_file_value(options, value, date, maille_id, previous, next, loup, faune_
 
 @ app.callback(
     Output('movie_player', 'src'),
-    Input('file-dropdown', 'value'),
-    State('date-dropdown', 'value'),
-    State('maille-dropdown', 'value'))
+    Input('select:file', 'value'),
+    State('select:visit', 'value'),
+    State('select:maille', 'value'))
 def update_video_player(name, date, maille_id):
     if name is not None and date is not None and maille_id is not None:
         return str(Path('/video') / df_asset_path(name, df_date_path(date, df_id_path(maille_id, video_root))).relative_to(video_root))
@@ -286,14 +326,5 @@ def update_video_player(name, date, maille_id):
         return None
 
 
-@ app.callback(
-    dash.dependencies.Output('image', 'src'),
-    [dash.dependencies.Input('image-dropdown', 'value')])
-def update_image_src(name):
-    encoded_image = base64.b64encode(
-        open(project_root / 'dashboard' / name, 'rb').read())
-    return 'data:image/png;base64,{}'.format(encoded_image.decode())
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run_server(debug=True)
