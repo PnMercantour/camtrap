@@ -189,6 +189,7 @@ pip install dash
 pip install pandas
 pip install -U scikit-image
 pip install python-dotenv
+pip install dash-bootstrap-components
 python bin/dashboard.py
 ```
 Enregistrer les préférences (CAMTRAP_VIDEO, ...) dans .env à la racine du projet.

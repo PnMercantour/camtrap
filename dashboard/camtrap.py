@@ -9,6 +9,7 @@ from pathlib import Path
 from dataFinder import *
 import megaFilter
 from classifier import loadClassifier, storeClassifier
+from metadata import metadata, groupMedia
 
 project_root = Path(__file__).parent.parent.resolve()
 load_dotenv(project_root / '.env')
@@ -99,6 +100,7 @@ detection_card = dbc.Card([
             min=0,
             max=1,
             step=0.02,
+            marks=None,
             value=0.96,
             tooltip={'placement': 'bottom', 'always_visible': True},
         ),
@@ -106,6 +108,7 @@ detection_card = dbc.Card([
             id='detection:megadetector:out_threshold',
             min=0,
             max=1,
+            marks=None,
             step=0.02,
             value=0.80,
             tooltip={'placement': 'bottom', 'always_visible': True},
@@ -131,9 +134,11 @@ media_card = dbc.Card([
             clearable=False,
             options=[],
         ),
-        dbc.Label('Vidéo'),
+        dbc.Label('Regroupement'),
+        dcc.Dropdown(id='select:group', clearable=True, options=[]),
+        dbc.Label('Media'),
         dcc.Dropdown(
-            id='select:file',
+            id='select:media',
             clearable=False,
             options=[]
         ),
@@ -166,11 +171,19 @@ params = [
 ]
 
 video_controls = dbc.Row([
+    dbc.Col('Media'),
     dbc.Col(html.Button('Précédent', id='video_control:previous'), width=2),
     dbc.Col(html.Button('Suivant', id='video_control:next'), width=2),
     dbc.Col(html.Button('Loup', id='video_control:loup'), width=2),
 
-], justify="center",
+], justify="left",
+)
+
+group_controls = dbc.Row([
+    dbc.Col('Regroupement'),
+    dbc.Col(html.Button('Précédent', id='group_control:previous'), width=2),
+    dbc.Col(html.Button('Suivant', id='group_control:next'), width=2),
+], justify="left",
 )
 
 map_tab = dbc.Tab(
@@ -190,7 +203,7 @@ video_tab = dbc.Tab(
             height=500,
             autoPlay=True
         ),
-        video_controls,
+        video_controls, group_controls
     ])
 
 image_tab = dbc.Tab(
@@ -204,11 +217,17 @@ stats_tab = dbc.Tab(
     label='Statistiques'
 )
 
+parameters_tab = dbc.Tab(
+    tab_id='params',
+    label='Paramètres'
+)
+
 tabs = dbc.Tabs([
     map_tab,
     video_tab,
     image_tab,
     stats_tab,
+    parameters_tab,
 ],
     active_tab='video',
 )
@@ -232,25 +251,39 @@ app.layout = dbc.Container([
 
 @app.callback(
     Output('select:visit', 'options'),
+    Output('select:visit', 'value'),
     Input('select:maille', 'value'))
 def update_visit_dropdown(maille_id):
     if maille_id is None:
-        return []
-    return [{'label': d, 'value': d} for d in df_dates(df_id_path(maille_id, data_root / 'detection' / 'frames'))]
-
-
-@app.callback(
-    Output('select:visit', 'value'),
-    Input('select:visit', 'options'))
-def set_visit_value(options):
+        return [], None
+    options = [{'label': d, 'value': d} for d in df_dates(
+        df_id_path(maille_id, data_root / 'detection' / 'frames'))]
     if options is None or len(options) == 0:
-        return None
-    return options[0]['value']
+        value = None
+    else:
+        value = options[0]['value']
+    return options, value
 
 
 @app.callback(
-    Output('select:file', 'options'),
+    Output('select:group', 'options'),
+    Output('select:group', 'value'),
+    Input('select:visit', 'value'),
+    State('select:maille', 'value')
+)
+def update_group_dropdown(date, maille_id):
+    groups = groupMedia(metadata(df_date_path(
+        date, df_id_path(maille_id, data_root / 'exiftool'))), 60)
+    return [{
+        'label': f"{group['startTime'].isoformat(sep=' ')} ({len(group['metadata'])})",
+        'value': group['startTime'].isoformat()
+    } for group in groups], None
+
+
+@ app.callback(
+    Output('select:media', 'options'),
     Output('file_info', 'children'),
+    Input('select:group', 'value'),
     Input('select:visit', 'value'),
     State('select:maille', 'value'),
     Input('detection:source', 'value'),
@@ -258,35 +291,50 @@ def set_visit_value(options):
     Input('detection:megadetector:in_threshold', 'value'),
     Input('detection:megadetector:out_threshold', 'value')
 )
-def update_file_dropdown(date, maille_id, source, megadetector, in_threshold, out_threshold):
+def update_media_dropdown(group_start_time, date, maille_id, source, megadetector, in_threshold, out_threshold):
+    media_metadata = metadata(df_date_path(
+        date, df_id_path(maille_id, data_root / 'exiftool')))
+    if group_start_time is not None:
+        groups = groupMedia(media_metadata, 60)
+        selected_group = next(
+            (group for group in groups if group['startTime'].isoformat() == group_start_time), None)
+        full_media_options = [{'label': media['startTime'].isoformat(
+            sep=' '), 'value': media['path']} for media in selected_group['metadata']]
+    else:
+        full_media_options = [{'label': media['startTime'].isoformat(
+            sep=' '), 'value': media['path']} for media in media_metadata]
+
     if source == 'all':
-        options = [{'label': d, 'value': d} for d in df_assets(
-            df_date_path(date, df_id_path(maille_id, video_root)))]
-        return [options, f'{len(options)} vidéos']
+        return [full_media_options, f'{len(full_media_options)} vidéos']
+
     if source == 'megadetector':
         if megadetector == 'all':
             l = megaFilter.processed(
                 data_root / 'detection'/'visits', maille_id, date)
-            return [[{'label': name, 'value': name} for name in l], f'{len(l)} vidéos analysées']
+            options = [option for option in full_media_options if Path(
+                option['value']).name in l]
+            return [options, f'{len(options)} vidéos analysées sur {len(full_media_options)}']
         if megadetector in ['pass', 'reject']:
             l_pass, l_rejected = megaFilter.filter(
                 data_root / 'detection' / 'visits', maille_id, date, in_threshold, out_threshold)
-            video_count = len(l_pass) + len(l_rejected)
+            video_count = len(full_media_options)
             if megadetector == 'pass':
                 l_out = l_pass
-                message = f'{len(l_out)} vidéos retenues sur {video_count}'
+                message = 'vidéos retenues'
             else:
                 l_out = l_rejected
-                message = f'{len(l_out)} vidéos rejetées sur {video_count}'
-            return [[{'label': d, 'value': d} for d in l_out], message]
+                message = 'vidéos rejetées'
+            options = [option for option in full_media_options if Path(
+                option['value']).name in l_out]
+            return [options, f'{len(options)} {message} sur {len(full_media_options)}']
     print('something wrong with source', source, megadetector)
     raise ValueError(source)
 
 
 @ app.callback(
-    Output('select:file', 'value'),
-    Input('select:file', 'options'),
-    State('select:file', 'value'),
+    Output('select:media', 'value'),
+    Input('select:media', 'options'),
+    State('select:media', 'value'),
     State('select:visit', 'value'),
     State('select:maille', 'value'),
     Input('video_control:previous', 'n_clicks'),
@@ -316,12 +364,12 @@ def set_file_value(options, value, date, maille_id, previous, next, loup):
 
 @ app.callback(
     Output('movie_player', 'src'),
-    Input('select:file', 'value'),
-    State('select:visit', 'value'),
-    State('select:maille', 'value'))
-def update_video_player(name, date, maille_id):
-    if name is not None and date is not None and maille_id is not None:
-        return str(Path('/video') / df_asset_path(name, df_date_path(date, df_id_path(maille_id, video_root))).relative_to(video_root))
+    Input('select:media', 'value'),
+)
+def update_video_player(media_path):
+    # TODO - send something instead of None
+    if media_path is not None:
+        return str(Path('/video') / media_path)
     else:
         return None
 
