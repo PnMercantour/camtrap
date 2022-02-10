@@ -127,6 +127,15 @@ media_card = dbc.Card([
         ),
         dbc.Label('Regroupement'),
         dcc.Dropdown(id='select:group', clearable=True, options=[]),
+        dcc.Slider(
+            id='group:interval',
+            min=0,
+            max=300,
+            step=5,
+            marks=None,
+            value=60,
+            tooltip={'placement': 'bottom', 'always_visible': True},
+        ),
         dbc.Label('Media'),
         dcc.Dropdown(
             id='select:media',
@@ -263,6 +272,7 @@ def update_visit_dropdown(site_id):
 @app.callback(
     Output('select:group', 'options'),
     Output('select:group', 'value'),
+    Input('group:interval', 'value'),
     Input('select:visit', 'value'),
     State('select:site', 'value'),
     State('select:group', 'options'),
@@ -272,10 +282,10 @@ def update_visit_dropdown(site_id):
     Input('group_control:first', 'n_clicks'),
     Input('group_control:last', 'n_clicks'),
 )
-def update_group_dropdown(date, site_id, options, value, _1, _2, _3, _4):
+def update_group_dropdown(interval, date, site_id, options, value, _1, _2, _3, _4):
     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
-    if 'select:visit' in changed_id:
-        groups = groupMedia(getMetadata(site_id, date, data_root), 60)
+    if 'select:visit' in changed_id or 'group:interval' in changed_id:
+        groups = groupMedia(getMetadata(site_id, date, data_root), interval)
         return [{
             'label': f"{group['startTime']} ({len(group['metadata'])})",
             'value': group['startTime']
@@ -303,16 +313,17 @@ def update_group_dropdown(date, site_id, options, value, _1, _2, _3, _4):
     Output('file_info', 'children'),
     Input('select:group', 'value'),
     Input('select:visit', 'value'),
+    State('group:interval', 'value'),
     State('select:site', 'value'),
     Input('detection:source', 'value'),
     Input('detection:megadetector', 'value'),
     Input('detection:megadetector:in_threshold', 'value'),
     Input('detection:megadetector:out_threshold', 'value')
 )
-def update_media_dropdown(group_start_time, date, site_id, source, megadetector, in_threshold, out_threshold):
+def update_media_dropdown(group_start_time, date, interval, site_id, source, megadetector, in_threshold, out_threshold):
     media_metadata = getMetadata(site_id, date, data_root)
     if group_start_time is not None:
-        groups = groupMedia(media_metadata, 60)
+        groups = groupMedia(media_metadata, interval)
         selected_group = next(
             (group for group in groups if group['startTime'] == group_start_time), None)
         full_media_options = [{'label': media['startTime'], 'value': media['path']}
