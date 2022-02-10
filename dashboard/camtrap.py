@@ -1,4 +1,4 @@
-from dash import Dash, html, dcc, Input, Output, State, callback_context
+from dash import Dash, html, dcc, Input, Output, State, callback_context, no_update
 from dash.exceptions import PreventUpdate
 import flask
 import dash_bootstrap_components as dbc
@@ -9,7 +9,7 @@ from pathlib import Path
 from dataFinder import *
 import megaFilter
 from classifier import loadClassifier, storeClassifier
-from metadata import metadata, groupMedia
+from metadata import listSites, listVisits, getMetadata, groupMedia
 
 project_root = Path(__file__).parent.parent.resolve()
 load_dotenv(project_root / '.env')
@@ -52,15 +52,6 @@ server = app.server
 @server.route('/video/<path:path>')
 def serve_video(path):
     return flask.send_from_directory(video_root, path)
-
-
-def recently_updated_maille(root):
-    "TODO: Returns the most recently visited Maille"
-    ids = df_ids(root)
-    if ids is not None and len(ids) > 0:
-        return ids[0]
-    else:
-        return None
 
 
 video_filter = [dbc.RadioItems(
@@ -120,13 +111,13 @@ detection_card = dbc.Card([
 media_card = dbc.Card([
     dbc.CardHeader("Sélectionner"),
     dbc.CardBody([
-        dbc.Label("Maille"),
+        dbc.Label("Site"),
         dcc.Dropdown(
-            id='select:maille',
+            id='select:site',
             clearable=False,
-            options=[{'label': f'{i}: descripteur', 'value': i}
-                 for i in df_ids(data_root / 'detection' / 'frames')],
-            value=recently_updated_maille(data_root / 'detection' / 'frames')
+            options=[{'label': str(i), 'value': i}
+                 for i in listSites(data_root)],
+            value=listSites(data_root)[0]
         ),
         dbc.Label("Visite"),
         dcc.Dropdown(
@@ -164,25 +155,29 @@ filter_card = dbc.Card([
 ])
 
 
-params = [
+control_panel = [
     media_card,
-    filter_card,
+    # filter_card,
     detection_card,
 ]
 
-video_controls = dbc.Row([
+media_controls = dbc.Row([
     dbc.Col('Media'),
-    dbc.Col(html.Button('Précédent', id='video_control:previous'), width=2),
-    dbc.Col(html.Button('Suivant', id='video_control:next'), width=2),
-    dbc.Col(html.Button('Loup', id='video_control:loup'), width=2),
+    dbc.Col(html.Button('Premier', id='media_control:first'), width=2),
+    dbc.Col(html.Button('Précédent', id='media_control:previous'), width=2),
+    dbc.Col(html.Button('Suivant', id='media_control:next'), width=2),
+    dbc.Col(html.Button('Dernier', id='media_control:last'), width=2),
+    dbc.Col(html.Button('Loup', id='media_control:loup'), width=2),
 
 ], justify="left",
 )
 
 group_controls = dbc.Row([
     dbc.Col('Regroupement'),
+    dbc.Col(html.Button('Premier', id='group_control:first'), width=2),
     dbc.Col(html.Button('Précédent', id='group_control:previous'), width=2),
     dbc.Col(html.Button('Suivant', id='group_control:next'), width=2),
+    dbc.Col(html.Button('Dernier', id='group_control:last'), width=2),
 ], justify="left",
 )
 
@@ -203,7 +198,7 @@ video_tab = dbc.Tab(
             height=500,
             autoPlay=True
         ),
-        video_controls, group_controls
+        media_controls, group_controls
     ])
 
 image_tab = dbc.Tab(
@@ -239,7 +234,7 @@ app.layout = dbc.Container([
     html.Hr(),
     dbc.Row(
         [
-            dbc.Col(params, md=2),
+            dbc.Col(control_panel, md=2),
             dbc.Col([info_string, tabs], md=10),
         ],
         align="top",
@@ -252,12 +247,12 @@ app.layout = dbc.Container([
 @app.callback(
     Output('select:visit', 'options'),
     Output('select:visit', 'value'),
-    Input('select:maille', 'value'))
-def update_visit_dropdown(maille_id):
-    if maille_id is None:
+    Input('select:site', 'value'))
+def update_visit_dropdown(site_id):
+    if site_id is None:
         return [], None
-    options = [{'label': d, 'value': d} for d in df_dates(
-        df_id_path(maille_id, data_root / 'detection' / 'frames'))]
+    options = [{'label': d, 'value': d}
+               for d in listVisits(site_id, data_root)]
     if options is None or len(options) == 0:
         value = None
     else:
@@ -269,15 +264,38 @@ def update_visit_dropdown(maille_id):
     Output('select:group', 'options'),
     Output('select:group', 'value'),
     Input('select:visit', 'value'),
-    State('select:maille', 'value')
+    State('select:site', 'value'),
+    State('select:group', 'options'),
+    State('select:group', 'value'),
+    Input('group_control:previous', 'n_clicks'),
+    Input('group_control:next', 'n_clicks'),
+    Input('group_control:first', 'n_clicks'),
+    Input('group_control:last', 'n_clicks'),
 )
-def update_group_dropdown(date, maille_id):
-    groups = groupMedia(metadata(df_date_path(
-        date, df_id_path(maille_id, data_root / 'exiftool'))), 60)
-    return [{
-        'label': f"{group['startTime'].isoformat(sep=' ')} ({len(group['metadata'])})",
-        'value': group['startTime'].isoformat()
-    } for group in groups], None
+def update_group_dropdown(date, site_id, options, value, _1, _2, _3, _4):
+    changed_id = [p['prop_id'] for p in callback_context.triggered][0]
+    if 'select:visit' in changed_id:
+        groups = groupMedia(getMetadata(site_id, date, data_root), 60)
+        return [{
+            'label': f"{group['startTime']} ({len(group['metadata'])})",
+            'value': group['startTime']
+        } for group in groups], None
+    values = [item['value'] for item in options]
+    if len(values) == 0:
+        return [no_update, no_update]
+    if 'group_control' in changed_id:
+        if value is None:
+            value = values[0]
+        if 'first' in changed_id:
+            return [no_update, values[0]]
+        if 'last' in changed_id:
+            return [no_update, values[-1]]
+        if 'previous' in changed_id:
+            return [no_update, values[max(values.index(value) - 1, 0)]]
+        if 'next' in changed_id:
+            return [no_update, values[min(values.index(value) + 1, len(values) - 1)]]
+    else:
+        return [no_update, no_update]
 
 
 @ app.callback(
@@ -285,24 +303,23 @@ def update_group_dropdown(date, maille_id):
     Output('file_info', 'children'),
     Input('select:group', 'value'),
     Input('select:visit', 'value'),
-    State('select:maille', 'value'),
+    State('select:site', 'value'),
     Input('detection:source', 'value'),
     Input('detection:megadetector', 'value'),
     Input('detection:megadetector:in_threshold', 'value'),
     Input('detection:megadetector:out_threshold', 'value')
 )
-def update_media_dropdown(group_start_time, date, maille_id, source, megadetector, in_threshold, out_threshold):
-    media_metadata = metadata(df_date_path(
-        date, df_id_path(maille_id, data_root / 'exiftool')))
+def update_media_dropdown(group_start_time, date, site_id, source, megadetector, in_threshold, out_threshold):
+    media_metadata = getMetadata(site_id, date, data_root)
     if group_start_time is not None:
         groups = groupMedia(media_metadata, 60)
         selected_group = next(
-            (group for group in groups if group['startTime'].isoformat() == group_start_time), None)
-        full_media_options = [{'label': media['startTime'].isoformat(
-            sep=' '), 'value': media['path']} for media in selected_group['metadata']]
+            (group for group in groups if group['startTime'] == group_start_time), None)
+        full_media_options = [{'label': media['startTime'], 'value': media['path']}
+                              for media in selected_group['metadata']]
     else:
-        full_media_options = [{'label': media['startTime'].isoformat(
-            sep=' '), 'value': media['path']} for media in media_metadata]
+        full_media_options = [{'label': media['startTime'],
+                               'value': media['path']} for media in media_metadata]
 
     if source == 'all':
         return [full_media_options, f'{len(full_media_options)} vidéos']
@@ -310,13 +327,13 @@ def update_media_dropdown(group_start_time, date, maille_id, source, megadetecto
     if source == 'megadetector':
         if megadetector == 'all':
             l = megaFilter.processed(
-                data_root / 'detection'/'visits', maille_id, date)
+                data_root / 'detection'/'visits', site_id, date)
             options = [option for option in full_media_options if Path(
                 option['value']).name in l]
             return [options, f'{len(options)} vidéos analysées sur {len(full_media_options)}']
         if megadetector in ['pass', 'reject']:
             l_pass, l_rejected = megaFilter.filter(
-                data_root / 'detection' / 'visits', maille_id, date, in_threshold, out_threshold)
+                data_root / 'detection' / 'visits', site_id, date, in_threshold, out_threshold)
             video_count = len(full_media_options)
             if megadetector == 'pass':
                 l_out = l_pass
@@ -336,27 +353,32 @@ def update_media_dropdown(group_start_time, date, maille_id, source, megadetecto
     Input('select:media', 'options'),
     State('select:media', 'value'),
     State('select:visit', 'value'),
-    State('select:maille', 'value'),
-    Input('video_control:previous', 'n_clicks'),
-    Input('video_control:next', 'n_clicks'),
-    Input('video_control:loup', 'n_clicks'),
+    State('select:site', 'value'),
+    Input('media_control:first', 'n_clicks'),
+    Input('media_control:previous', 'n_clicks'),
+    Input('media_control:next', 'n_clicks'),
+    Input('media_control:last', 'n_clicks'),
+    Input('media_control:loup', 'n_clicks'),
 )
-def set_file_value(options, value, date, maille_id, previous, next, loup):
+def set_file_value(options, value, date, site_id, first, previous, next, last, loup):
     if options is None or len(options) == 0:
         return None
     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
-    if 'video_control:next' in changed_id:
+    if 'media_control:first' in changed_id:
+        return options[0]['value']
+    if 'media_control:next' in changed_id:
         values = [item['value'] for item in options]
         return values[min(values.index(value) + 1, len(values) - 1)]
-    if 'video_control:previous' in changed_id:
+    if 'media_control:previous' in changed_id:
         values = [item['value'] for item in options]
         return values[max(values.index(value) - 1, 0)]
-
-    if 'video_control:loup' in changed_id:
+    if 'media_control:last' in changed_id:
+        return options[-1]['value']
+    if 'media_control:loup' in changed_id:
         path = data_root / 'classification' / 'video'
-        classif = loadClassifier(path, maille_id, date, value)
+        classif = loadClassifier(path, site_id, date, value)
         classif['loup'] = True,
-        storeClassifier(classif, path, maille_id, date, value),
+        storeClassifier(classif, path, site_id, date, value),
         values = [item['value'] for item in options]
         return values[min(values.index(value) + 1, len(values) - 1)]
     return options[0]['value']

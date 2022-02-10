@@ -21,11 +21,18 @@ exiftool -csv -fileOrder createDate --printconv -sourcefile -createdate -duratio
 Les fichiers json référencent le chemin complet du fichier source.
 
 ```
-cd <root>
-exiftool -fast -json -groupNames  --printConv --composite -ext mp4 -textOut "/home/vprunet/src/PNM/camtrap/data/exiftool/%d%F.json" -recurse Maille\ 6/
+cd /media/vprunet/LaCie
+exiftool -fast -json -groupNames  --printConv --composite -ext mp4 -textOut "/home/vprunet/src/PNM/camtrap/data/exif/%d%F.json" -recurse Maille\ *
 ``̀
+204 directories scanned
+  150 directories created
+45294 image files read
+45294 output files created
 
 
+Anomalies sur 101 102 116 117 119 23 39 69 72 qui contiennent des fichiers jpeg ou sont mal classées (le répertoire visite n'est pas une date valide)
+
+Traitement des metadonnées depuis le répertoire source data/exif vers le répertoire data/metadata
 ## recherche de véhicules
 
 grep -lr "\"3\"" data/detection/frames/Maille\ 70/2020-08-27/ |sort
