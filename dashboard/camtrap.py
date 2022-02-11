@@ -43,7 +43,7 @@ data root:{data_root}
 """)
 
 app = Dash(
-    external_stylesheets=[dbc.themes.BOOTSTRAP]
+    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME]
 )
 
 server = app.server
@@ -73,37 +73,42 @@ detection_card = dbc.Card([
     dbc.CardBody([
         dcc.Dropdown(
             id="detection:source", clearable=False,
-            options=[{'label': 'Toutes les vidéos', 'value': 'all'}, {
-                'label': 'MegaDetector', 'value': 'megadetector'}], value='megadetector',
+            options=[{'label': 'tous les Media', 'value': 'all'}, {
+                'label': 'MegaDetector', 'value': 'megadetector'}], value='all',
         ),
-        dcc.Dropdown(
-            id="detection:megadetector",
-            clearable=False,
-            value='pass',
-            options=[
-                {'label': "Toutes les vidéos", "value": 'all'},
-                {'label': 'Auto détection', 'value': 'pass'},
-                {'label': 'Corbeille', 'value': 'reject'},
-            ]),
-        dbc.Label('Seuils de détection'),
-        dcc.Slider(
-            id='detection:megadetector:in_threshold',
-            min=0,
-            max=1,
-            step=0.02,
-            marks=None,
-            value=0.96,
-            tooltip={'placement': 'bottom', 'always_visible': True},
-        ),
-        dcc.Slider(
-            id='detection:megadetector:out_threshold',
-            min=0,
-            max=1,
-            marks=None,
-            step=0.02,
-            value=0.80,
-            tooltip={'placement': 'bottom', 'always_visible': True},
-        ),
+        dbc.Collapse([
+            dcc.Dropdown(
+                id="detection:megadetector",
+                clearable=False,
+                value='pass',
+                options=[
+                    {'label': "Toutes les vidéos", "value": 'all'},
+                    {'label': 'Auto détection', 'value': 'pass'},
+                    {'label': 'Corbeille', 'value': 'reject'},
+                ]),
+            dbc.Label('Seuils de détection'),
+            dcc.Slider(
+                id='detection:megadetector:in_threshold',
+                min=0,
+                max=1,
+                step=0.02,
+                marks=None,
+                value=0.96,
+                tooltip={'placement': 'bottom', 'always_visible': True},
+            ),
+            dcc.Slider(
+                id='detection:megadetector:out_threshold',
+                min=0,
+                max=1,
+                marks=None,
+                step=0.02,
+                value=0.80,
+                tooltip={'placement': 'bottom', 'always_visible': True},
+            ),
+        ],
+            id="detection:megadetector_options",
+            is_open=True,
+        )
     ])
 ])
 
@@ -130,10 +135,10 @@ media_card = dbc.Card([
         dcc.Slider(
             id='group:interval',
             min=0,
-            max=300,
-            step=5,
+            max=600,
+            step=10,
             marks=None,
-            value=60,
+            value=300,
             tooltip={'placement': 'bottom', 'always_visible': True},
         ),
         dbc.Label('Media'),
@@ -164,29 +169,36 @@ filter_card = dbc.Card([
 ])
 
 
-control_panel = [
+left_panel = [
     media_card,
     # filter_card,
     detection_card,
 ]
 
 media_controls = dbc.Row([
-    dbc.Col('Media'),
-    dbc.Col(html.Button('Premier', id='media_control:first'), width=2),
-    dbc.Col(html.Button('Précédent', id='media_control:previous'), width=2),
-    dbc.Col(html.Button('Suivant', id='media_control:next'), width=2),
-    dbc.Col(html.Button('Dernier', id='media_control:last'), width=2),
-    dbc.Col(html.Button('Loup', id='media_control:loup'), width=2),
+    dbc.Col('Media', width=2),
+    dbc.Col(dbc.ButtonGroup([
+        dbc.Button(html.I(className="fas fa-solid fa-fast-backward"),
+                   id='media_control:first', title='Premier média du regroupement'),
+            dbc.Button(html.I(className="fas fa-solid fa-step-backward"),
+                       id='media_control:previous', title='Média précédent'),
+            dbc.Button(html.I(className="fas fa-solid fa-step-forward"),
+                       id='media_control:next', title='Média suivant'),
+            dbc.Button(html.I(className="fas fa-solid fa-fast-forward"),
+                       id='media_control:last', title='dernier média du regroupement'),
+            ], size='lg'), width=3),
+
+    dbc.Col(html.Button('Loup', id='media_control:loup'), width=1),
 
 ], justify="left",
 )
 
 group_controls = dbc.Row([
-    dbc.Col('Regroupement'),
-    dbc.Col(html.Button('Premier', id='group_control:first'), width=2),
-    dbc.Col(html.Button('Précédent', id='group_control:previous'), width=2),
-    dbc.Col(html.Button('Suivant', id='group_control:next'), width=2),
-    dbc.Col(html.Button('Dernier', id='group_control:last'), width=2),
+    dbc.Col('Regroupement', width=2),
+    dbc.Col(dbc.ButtonGroup([
+        dbc.Button(html.I(className="fas fa-solid fa-backward"),
+                   id='group_control:previous', title='Groupe précédent'),
+        dbc.Button(html.I(className="fas fa-solid fa-forward"), id='group_control:next', title='Groupe suivant')], size='lg'), width=3),
 ], justify="left",
 )
 
@@ -243,7 +255,7 @@ app.layout = dbc.Container([
     html.Hr(),
     dbc.Row(
         [
-            dbc.Col(control_panel, md=2),
+            dbc.Col(left_panel, md=2),
             dbc.Col([info_string, tabs], md=10),
         ],
         align="top",
@@ -279,17 +291,17 @@ def update_visit_dropdown(site_id):
     State('select:group', 'value'),
     Input('group_control:previous', 'n_clicks'),
     Input('group_control:next', 'n_clicks'),
-    Input('group_control:first', 'n_clicks'),
-    Input('group_control:last', 'n_clicks'),
+    # Input('group_control:first', 'n_clicks'),
+    # Input('group_control:last', 'n_clicks'),
 )
-def update_group_dropdown(interval, date, site_id, options, value, _1, _2, _3, _4):
+def update_group_dropdown(interval, date, site_id, options, value, _1, _2):
     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
     if 'select:visit' in changed_id or 'group:interval' in changed_id:
         groups = groupMedia(getMetadata(site_id, date, data_root), interval)
         return [{
             'label': f"{group['startTime']} ({len(group['metadata'])})",
             'value': group['startTime']
-        } for group in groups], None
+        } for group in groups], groups[0]['startTime'] if len(groups) > 0 else None
     values = [item['value'] for item in options]
     if len(values) == 0:
         return [no_update, no_update]
@@ -393,6 +405,14 @@ def set_file_value(options, value, date, site_id, first, previous, next, last, l
         values = [item['value'] for item in options]
         return values[min(values.index(value) + 1, len(values) - 1)]
     return options[0]['value']
+
+
+@ app.callback(
+    Output('detection:megadetector_options', 'is_open'),
+    Input('detection:source', 'value'),
+)
+def toggle_detection_options(source):
+    return source == 'megadetector'
 
 
 @ app.callback(
