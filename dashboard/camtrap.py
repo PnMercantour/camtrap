@@ -2,37 +2,15 @@ from dash import Dash, html, dcc, Input, Output, State, callback_context, no_upd
 from dash.exceptions import PreventUpdate
 import flask
 import dash_bootstrap_components as dbc
-from dotenv import load_dotenv
-from os import getenv
+
 import json
 from pathlib import Path
 from dataFinder import *
 import megaFilter
-from classifier import loadClassifier, storeClassifier
+from classifierPanel import classifier_panel
 from metadata import listSites, listVisits, getMetadata, groupMedia
 
-project_root = Path(__file__).parent.parent.resolve()
-load_dotenv(project_root / '.env')
-load_dotenv(project_root / 'config/default_config')
-
-data_root = project_root / getenv('CAMTRAP_DATA')
-"Location of processed files"
-
-video_root = project_root / getenv('CAMTRAP_VIDEO')
-"Location of raw video files"
-
-try:
-    with (project_root / "config/users.json").open() as f:
-        camtrap_users = json.load(f)
-except:
-    if (project_root / "config/users.json").exists():
-        print(
-            'ERROR: config/users.json could not be parsed, either remove or fix this file')
-        exit(1)
-    else:
-        print('WARNING: config/users.json not found')
-    camtrap_users = []
-camtrap_users.append({"label": "Invité", "value": "guest"})
+from config import project_root, video_root, data_root, camtrap_users
 
 print(f"""
 camtrap dashboard
@@ -175,32 +153,25 @@ left_panel = [
     detection_card,
 ]
 
-media_controls = dbc.Row([
-    dbc.Col('Media', width=2),
-    dbc.Col(dbc.ButtonGroup([
-        dbc.Button(html.I(className="fas fa-solid fa-fast-backward"),
-                   id='media_control:first', title='Premier média du regroupement'),
-            dbc.Button(html.I(className="fas fa-solid fa-step-backward"),
-                       id='media_control:previous', title='Média précédent'),
-            dbc.Button(html.I(className="fas fa-solid fa-step-forward"),
-                       id='media_control:next', title='Média suivant'),
-            dbc.Button(html.I(className="fas fa-solid fa-fast-forward"),
-                       id='media_control:last', title='dernier média du regroupement'),
-            ], size='lg'), width=3),
+media_controls = dbc.ButtonGroup([
+    dbc.Button(html.I(className="fas fa-solid fa-fast-backward"),
+               id='group_control:previous', title='Groupe précédent'),
+    dbc.Button(html.I(className="fas fa-solid fa-step-backward"),
+               id='media_control:first', title='Premier média du groupe'),
+    dbc.Button(html.I(className="fas fa-solid fa-backward"),
+               id='media_control:previous', title='Média précédent'),
+    dbc.Button(html.I(className="fas fa-solid fa-forward"),
+               id='media_control:next', title='Média suivant'),
+    dbc.Button(html.I(className="fas fa-solid fa-step-forward"),
+               id='media_control:last', title='dernier média du groupe'),
+    dbc.Button(html.I(className="fas fa-solid fa-fast-forward"),
+               id='group_control:next', title='Groupe suivant'),
+], size='lg')
 
-    dbc.Col(html.Button('Loup', id='media_control:loup'), width=1),
-
-], justify="left",
-)
-
-group_controls = dbc.Row([
-    dbc.Col('Regroupement', width=2),
-    dbc.Col(dbc.ButtonGroup([
-        dbc.Button(html.I(className="fas fa-solid fa-backward"),
-                   id='group_control:previous', title='Groupe précédent'),
-        dbc.Button(html.I(className="fas fa-solid fa-forward"), id='group_control:next', title='Groupe suivant')], size='lg'), width=3),
-], justify="left",
-)
+with (project_root / "config/tags.json").open() as f:
+    tags = json.load(f)
+tag_controls = dbc.RadioItems(
+    options=[{"label": tag["label"], "value":tag["value"]} for tag in tags])
 
 map_tab = dbc.Tab(
     tab_id='map',
@@ -209,17 +180,17 @@ map_tab = dbc.Tab(
 video_tab = dbc.Tab(
     tab_id='video',
     label='Vidéo',
-    style={'height': 700},
     children=[
         html.Video(
             controls=True,
             id='movie_player',
             src=None,
-            # width=960,
-            height=500,
+            width='100%',
             autoPlay=True
         ),
-        media_controls, group_controls
+        dbc.Row([
+            dbc.Col(media_controls, width='auto'),
+        ], justify='between'),
     ])
 
 image_tab = dbc.Tab(
@@ -255,8 +226,9 @@ app.layout = dbc.Container([
     html.Hr(),
     dbc.Row(
         [
-            dbc.Col(left_panel, md=2),
-            dbc.Col([info_string, tabs], md=10),
+            dbc.Col(left_panel, md=3),
+            dbc.Col([tabs, info_string], md=6),
+            dbc.Col(classifier_panel, md=3)
         ],
         align="top",
     ),
@@ -265,7 +237,7 @@ app.layout = dbc.Container([
 )
 
 
-@app.callback(
+@ app.callback(
     Output('select:visit', 'options'),
     Output('select:visit', 'value'),
     Input('select:site', 'value'))
@@ -281,7 +253,7 @@ def update_visit_dropdown(site_id):
     return options, value
 
 
-@app.callback(
+@ app.callback(
     Output('select:group', 'options'),
     Output('select:group', 'value'),
     Input('group:interval', 'value'),
@@ -381,9 +353,8 @@ def update_media_dropdown(group_start_time, date, interval, site_id, source, meg
     Input('media_control:previous', 'n_clicks'),
     Input('media_control:next', 'n_clicks'),
     Input('media_control:last', 'n_clicks'),
-    Input('media_control:loup', 'n_clicks'),
 )
-def set_file_value(options, value, date, site_id, first, previous, next, last, loup):
+def set_file_value(options, value, date, site_id, first, previous, next, last):
     if options is None or len(options) == 0:
         return None
     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
@@ -397,13 +368,6 @@ def set_file_value(options, value, date, site_id, first, previous, next, last, l
         return values[max(values.index(value) - 1, 0)]
     if 'media_control:last' in changed_id:
         return options[-1]['value']
-    if 'media_control:loup' in changed_id:
-        path = data_root / 'classification' / 'video'
-        classif = loadClassifier(path, site_id, date, value)
-        classif['loup'] = True,
-        storeClassifier(classif, path, site_id, date, value),
-        values = [item['value'] for item in options]
-        return values[min(values.index(value) + 1, len(values) - 1)]
     return options[0]['value']
 
 
@@ -417,14 +381,15 @@ def toggle_detection_options(source):
 
 @ app.callback(
     Output('movie_player', 'src'),
+    Output('movie_player', 'hidden'),
     Input('select:media', 'value'),
 )
 def update_video_player(media_path):
     # TODO - send something instead of None
     if media_path is not None:
-        return str(Path('/video') / media_path)
+        return [(str(Path('/video') / media_path)), False]
     else:
-        return None
+        return [None, True]
 
 
 if __name__ == "__main__":
