@@ -32,20 +32,6 @@ def serve_video(path):
     return flask.send_from_directory(video_root, path)
 
 
-video_filter = [dbc.RadioItems(
-    options=[
-        {'label': 'toutes les vidéos', 'value': 'classifier:all'},
-        {'label': 'vidéos non classifiées', 'value': 'classifier:false'},
-        {'label': "vidéos classifiées", "value": 'classifier:true'}]),
-    dcc.Dropdown(
-        multi=True,
-        options=[
-            {'label': 'Loup', 'value': 'loup'},
-            {'label': 'sanglier', 'value': 'sanglier'},
-            {'label': 'Faune sauvage', 'value': 'faune_sauvage'},
-            {'label': 'Faune domestique', 'value': 'faune_domestique'}
-        ])]
-
 detection_card = dbc.Card([
     dbc.CardHeader("Détecter"),
     dbc.CardBody([
@@ -147,12 +133,6 @@ filter_card = dbc.Card([
 ])
 
 
-left_panel = [
-    media_card,
-    # filter_card,
-    detection_card,
-]
-
 media_controls = dbc.ButtonGroup([
     dbc.Button(html.I(className="fas fa-solid fa-fast-backward"),
                id='group_control:previous', title='Groupe précédent'),
@@ -226,7 +206,11 @@ app.layout = dbc.Container([
     html.Hr(),
     dbc.Row(
         [
-            dbc.Col(left_panel, md=3),
+            dbc.Col([
+                media_card,
+                # filter_card,
+                detection_card,
+            ], md=3),
             dbc.Col([tabs, info_string], md=6),
             dbc.Col(classifier_panel, md=3)
         ],
@@ -393,4 +377,4 @@ def update_video_player(media_path):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=True, host='0.0.0.0')
