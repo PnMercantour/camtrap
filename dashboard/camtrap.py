@@ -184,9 +184,18 @@ stats_tab = dbc.Tab(
     label='Statistiques'
 )
 
-parameters_tab = dbc.Tab(
-    tab_id='params',
-    label='Paramètres'
+preferences_tab = dbc.Tab(
+    tab_id='preferences',
+    label='Préférences',
+    children=dbc.Card([
+        dbc.CardHeader('Serveur de vidéos'),
+        dbc.CardBody([
+            dbc.Switch(label='Télécharger depuis un serveur alternatif',
+                       value=False, id='mediaserver:custom'),
+            dbc.Input(id='mediaserver:url',
+                      value='http://localhost:8000/', type='text')
+        ])
+    ])
 )
 
 tabs = dbc.Tabs([
@@ -194,7 +203,7 @@ tabs = dbc.Tabs([
     video_tab,
     image_tab,
     stats_tab,
-    parameters_tab,
+    preferences_tab,
 ],
     active_tab='video',
 )
@@ -367,11 +376,18 @@ def toggle_detection_options(source):
     Output('movie_player', 'src'),
     Output('movie_player', 'hidden'),
     Input('select:media', 'value'),
+    Input('mediaserver:custom', 'value'),
+    Input('mediaserver:url', 'value'),
 )
-def update_video_player(media_path):
+def update_video_player(media_path, custom, url):
     # TODO - send something instead of None
     if media_path is not None:
-        return [(str(Path('/video') / media_path)), False]
+        if custom:
+            path = url + str(media_path)
+            print(path)
+            return [path, False]
+        else:
+            return [(str(Path('/video') / media_path)), False]
     else:
         return [None, True]
 
