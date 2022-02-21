@@ -6,23 +6,27 @@ import dash_bootstrap_components as dbc
 import json
 from pathlib import Path
 from dataFinder import *
+import stats
 import megaFilter
 from classifierPanel import classifier_panel
 from metadata import listSites, listVisits, getMetadata, groupMedia
 
-from config import project_root, video_root, data_root, camtrap_users
+from config import project_root, video_root, data_root
+import auth
+
+app = Dash(
+    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME]
+)
 
 print(f"""
 camtrap dashboard
 project root: {project_root}
 video root:{video_root}
 data root:{data_root}
-{len(camtrap_users)} registered user(s)
+{len(auth.users)} user accounts
+authentification: {auth.init(app)}
 """)
 
-app = Dash(
-    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME]
-)
 
 server = app.server
 
@@ -181,7 +185,13 @@ image_tab = dbc.Tab(
 
 stats_tab = dbc.Tab(
     tab_id='stats',
-    label='Statistiques'
+    label='Statistiques',
+    children=dbc.Card([
+        dbc.CardHeader('Statistiques du site'),
+        dbc.CardBody([
+            stats.table
+        ])
+    ])
 )
 
 preferences_tab = dbc.Tab(
@@ -211,7 +221,11 @@ tabs = dbc.Tabs([
 info_string = html.Div(id='file_info')
 
 app.layout = dbc.Container([
-    html.H1("Camtrap - Pièges photos du Parc national du Mercantour"),
+    dbc.Row([
+            dbc.Col(
+                html.H2("Camtrap - Pièges photos du Parc national du Mercantour"), md=8),
+            dbc.Col(auth.component, md=4)
+            ]),
     html.Hr(),
     dbc.Row(
         [

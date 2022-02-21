@@ -33,7 +33,7 @@ def processVideo(path, relative, json_dir, image_dir, tf_detector, first_frame=0
     frame = first_frame
     while frame <= last_frame:
         image_file = f'{path.name}-{frame}.jpg'
-        relative_image_path= relative / image_file
+        relative_image_path = relative / image_file
         print(f'Processing image {relative_image_path}')
         json_file = json_dir / f'{path.name}-{frame}.json'
         if overwrite or not json_file.exists() or dump:
@@ -47,7 +47,7 @@ def processVideo(path, relative, json_dir, image_dir, tf_detector, first_frame=0
                     result = tf_detector.generate_detections_one_image(
                         pil_image, str(relative_image_path))
                     with open(json_file, 'w') as f:
-                        json.dump(result, f, indent=1)
+                        json.dump(result, f)
                 if dump:
                     pil_image.save(image_dir/image_file)
         frame = frame + pick

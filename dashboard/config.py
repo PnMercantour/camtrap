@@ -12,16 +12,3 @@ data_root = project_root / getenv('CAMTRAP_DATA')
 
 video_root = project_root / getenv('CAMTRAP_VIDEO')
 "Location of raw video files"
-
-try:
-    with (project_root / "config/users.json").open() as f:
-        camtrap_users = json.load(f)
-except:
-    if (project_root / "config/users.json").exists():
-        print(
-            'ERROR: config/users.json could not be parsed, either remove or fix this file')
-        exit(1)
-    else:
-        print('WARNING: config/users.json not found')
-    camtrap_users = []
-camtrap_users.append({"label": "Invité", "value": "guest"})
