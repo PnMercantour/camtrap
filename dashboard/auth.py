@@ -1,15 +1,16 @@
 from config import project_root
+from os import getenv
 import dash
 import dash_auth
 from dash import html, Input, Output
 import flask
 import json
 
-basicAuth = False
+auth = getenv('CAMTRAP_AUTH')
 
 users = []
 
-if basicAuth:
+if auth == 'BasicAuth':
     try:
         with (project_root / "config/users.json").open() as f:
             users = json.load(f)
@@ -24,14 +25,12 @@ if basicAuth:
 
 def init(app):
     "app est nécessaire pour BasicAuth"
-    if basicAuth:
+    if auth == 'BasicAuth':
         dash_auth.BasicAuth(
             app,
             users
         )
-        return 'basicAuth'
-    else:
-        return 'no Auth'
+    return auth
 
 
 component = html.H2(id="auth:user_name")
@@ -45,7 +44,7 @@ default_user = 'PNM'
     Input('auth:user_name', 'children')
 )
 def set_user_name(any):
-    if basicAuth:
+    if auth == 'BasicAuth':
         return flask.request.authorization['username']
     else:
         return default_user
