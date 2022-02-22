@@ -4,7 +4,6 @@ import dash
 import dash_bootstrap_components as dbc
 from pathlib import Path
 from classifier import loadClassifier, dumpClassifier
-from config import data_root
 
 
 classifier_panel = dbc.Card([
@@ -95,7 +94,7 @@ def classifier_logic(media, visit, site_id, valid, tag, population, comment, gro
         if changed_id in ['classifier:group.value', 'select:media.value', 'classifier:abort.n_clicks']:
             print('load media properties')
             classifier = loadClassifier(
-                site_id, visit, Path(media).name, data_root)
+                site_id, visit, Path(media).name)
             return[
                 classifier.get('valid'),
                 classifier.get('tag'),
@@ -113,7 +112,7 @@ def classifier_logic(media, visit, site_id, valid, tag, population, comment, gro
             store['comment'] = comment
             store['valid'] = valid
             success = dumpClassifier(
-                store, site_id, visit, Path(media).name, data_root)
+                store, site_id, visit, Path(media).name)
             store['serial'] = store['serial'] + 1  # hack
             return [
                 valid,

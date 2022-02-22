@@ -9,7 +9,7 @@ from dataFinder import *
 import stats
 import megaFilter
 from classifierPanel import classifier_panel
-from metadata import listSites, listVisits, getMetadata, groupMedia
+from metadata import listSites, listVisits, getVisitMetadata, groupMedia
 
 from config import project_root, video_root, data_root
 import auth
@@ -89,8 +89,8 @@ media_card = dbc.Card([
             id='select:site',
             clearable=False,
             options=[{'label': str(i), 'value': i}
-                 for i in listSites(data_root)],
-            value=listSites(data_root)[0]
+                 for i in listSites()],
+            value=listSites()[0]
         ),
         dbc.Label("Visite"),
         dcc.Dropdown(
@@ -100,6 +100,7 @@ media_card = dbc.Card([
         ),
         dbc.Label('Regroupement'),
         dcc.Dropdown(id='select:group', clearable=True, options=[]),
+        dbc.Label('Intervalle (secondes)'),
         dcc.Slider(
             id='group:interval',
             min=0,
@@ -197,15 +198,25 @@ stats_tab = dbc.Tab(
 preferences_tab = dbc.Tab(
     tab_id='preferences',
     label='Préférences',
-    children=dbc.Card([
-        dbc.CardHeader('Serveur de vidéos'),
-        dbc.CardBody([
-            dbc.Switch(label='Télécharger depuis un serveur alternatif',
-                       value=False, id='mediaserver:custom'),
-            dbc.Input(id='mediaserver:url',
-                      value='http://localhost:8000/', type='text')
+    children=[
+        dbc.Card([
+            dbc.CardHeader('Sélection'),
+            dbc.CardBody([
+                dbc.Switch(label='Regrouper les media',
+                           value=True, id='prefs:group_media'),
+            ])
+        ]),
+        dbc.Card([
+            dbc.CardHeader('Serveur de vidéos'),
+            dbc.CardBody([
+                dbc.Switch(label='Télécharger depuis un serveur alternatif',
+                           value=False, id='mediaserver:custom'),
+                dbc.Input(id='mediaserver:url',
+                          value='http://localhost:8000/', type='text')
+            ])
         ])
-    ])
+    ]
+
 )
 
 tabs = dbc.Tabs([
@@ -252,12 +263,20 @@ def update_visit_dropdown(site_id):
     if site_id is None:
         return [], None
     options = [{'label': d, 'value': d}
-               for d in listVisits(site_id, data_root)]
+               for d in listVisits(site_id)]
     if options is None or len(options) == 0:
         value = None
     else:
         value = options[0]['value']
     return options, value
+
+
+def group_of_media(groups, media):
+    if media:
+        # TODO trouver le groupe correspondant au media
+        return groups[0]['startTime'] if len(groups) > 0 else None
+    else:
+        return groups[0]['startTime'] if len(groups) > 0 else None
 
 
 @ app.callback(
@@ -268,25 +287,47 @@ def update_visit_dropdown(site_id):
     State('select:site', 'value'),
     State('select:group', 'options'),
     State('select:group', 'value'),
+    State('prefs:group_media', 'value'),
     Input('group_control:previous', 'n_clicks'),
     Input('group_control:next', 'n_clicks'),
     # Input('group_control:first', 'n_clicks'),
     # Input('group_control:last', 'n_clicks'),
 )
-def update_group_dropdown(interval, date, site_id, options, value, _1, _2):
+def update_group_dropdown(interval, date, site_id, options, value, group_media, _1, _2):
     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
-    if 'select:visit' in changed_id or 'group:interval' in changed_id:
-        groups = groupMedia(getMetadata(site_id, date, data_root), interval)
-        return [{
+    if 'group_media' in changed_id or 'group:interval' in changed_id:
+        if group_media:
+            groups = groupMedia(getVisitMetadata(
+                date, site_id), interval)
+            # TODO passer les metadonnées du media
+            current_group = group_of_media(groups, None)
+            return [options, current_group]
+        elif 'group:interval' in changed_id:
+            groups = groupMedia(getVisitMetadata(
+                date, site_id), interval)
+            return [groups, None]
+        else:
+            return [options, None]
+    if 'select:visit' in changed_id:
+        groups = groupMedia(getVisitMetadata(
+            date, site_id), interval)
+        options = [{
             'label': f"{group['startTime']} ({len(group['metadata'])})",
             'value': group['startTime']
-        } for group in groups], groups[0]['startTime'] if len(groups) > 0 else None
+        } for group in groups]
+        value = groups[0]['startTime'] if len(
+            groups) > 0 and group_media else None
+        return [options, value]
     values = [item['value'] for item in options]
     if len(values) == 0:
         return [no_update, no_update]
     if 'group_control' in changed_id:
         if value is None:
-            value = values[0]
+            # TODO mettre en cache les metadonnées du groupe
+            groups = groupMedia(getVisitMetadata(
+                date, site_id), interval)
+            # TODO passer les metadonnées du media
+            value = group_of_media(groups, None)
         if 'first' in changed_id:
             return [no_update, values[0]]
         if 'last' in changed_id:
@@ -312,7 +353,7 @@ def update_group_dropdown(interval, date, site_id, options, value, _1, _2):
     Input('detection:megadetector:out_threshold', 'value')
 )
 def update_media_dropdown(group_start_time, date, interval, site_id, source, megadetector, in_threshold, out_threshold):
-    media_metadata = getMetadata(site_id, date, data_root)
+    media_metadata = getVisitMetadata(date, site_id)
     if group_start_time is not None:
         groups = groupMedia(media_metadata, interval)
         selected_group = next(

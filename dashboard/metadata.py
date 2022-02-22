@@ -1,13 +1,14 @@
 from pathlib import Path
 import json
 import argparse
+from config import data_root
 from dataFinder import *
 from datetime import datetime, timedelta
 
 exiftoolDateFormat = '%Y:%m:%d %H:%M:%S'
 
 
-def listSites(data_root):
+def listSites():
     l = []
     for site in (data_root / 'metadata' / 'sites').iterdir():
         try:
@@ -18,7 +19,7 @@ def listSites(data_root):
     return l
 
 
-def listVisits(site_id, data_root):
+def listVisits(site_id):
     " Sorted list of visit dates for given site id, most recent first"
     l = []
     for visit in (data_root/'metadata' / 'sites'/str(site_id)).iterdir():
@@ -31,17 +32,17 @@ def listVisits(site_id, data_root):
     return l
 
 
-def getMetadata(site_id, visit, data_root, reload=False):
+def getVisitMetadata(visit, site_id):
     path = (data_root / 'metadata' / 'sites' /
             str(site_id) / visit).with_suffix('.json')
-    if reload or (not path.exists()):
-        return buildMetadata(site_id, visit, data_root)
+    if (not path.exists()):
+        return buildMetadata(visit, site_id)
     with path.open('r') as f:
         md = json.load(f)
         return md
 
 
-def buildMetadata(site_id, visit, data_root):
+def buildMetadata(visit, site_id):
     exif_path = data_root / 'exif' / ('Maille ' + str(site_id)) / visit
     if not exif_path.exists():
         print(f'buildMetadata: {exif_path} does not exist')
@@ -53,7 +54,6 @@ def buildMetadata(site_id, visit, data_root):
         with p.open('r') as f:
             md = json.load(f)[0]
             l.append(dict(
-                mdFile=str(p),
                 fileName=md['File:FileName'],
                 path=md["SourceFile"],
                 startTime=(datetime.strptime(
@@ -95,6 +95,6 @@ if __name__ == '__main__':
             for visit in site.iterdir():
                 try:
                     date.fromisoformat(visit.name)
-                    buildMetadata(site_id, visit.name, root)
+                    buildMetadata(visit.name, site_id, root)
                 except:
                     print(f'warning:invalid repository: {visit}: ignored')
