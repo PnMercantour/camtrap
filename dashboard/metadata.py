@@ -22,7 +22,7 @@ def listSites():
 def listVisits(site_id):
     " Sorted list of visit dates for given site id, most recent first"
     l = []
-    for visit in (data_root/'metadata' / 'sites'/str(site_id)).iterdir():
+    for visit in (data_root/'metadata'/'sites'/str(site_id)).iterdir():
         try:
             date.fromisoformat(visit.stem)
             l.append(visit.stem)
