@@ -17,7 +17,6 @@ import selection
 from selection import selection_card, t_selection_context
 import media
 import filter
-from group import mediaGroup, mediaGroups, group_card
 
 from config import project_root, video_root, data_root
 import auth
@@ -135,7 +134,6 @@ app.layout = dbc.Container([
             dbc.Col([
                 classifier_panel,
                 media.card,
-                group_card,
             ], md=3)
         ],
         align="top",
@@ -143,31 +141,6 @@ app.layout = dbc.Container([
 ],
     fluid=True,
 )
-
-
-@lru_cache
-def filterMetadata(visit, site_id, filter_s):
-    context = json.loads(filter_s)
-    print(context)
-    raw_metadata = metadata.getVisitMetadataFromCache(visit, site_id)
-    filtered = filter.filter(raw_metadata, context, visit, site_id)
-    return dict(raw_metadata=raw_metadata, metadata=filtered, context=context, visit=visit, site_id=site_id)
-
-
-@ app.callback(
-    output=[
-        media.output,
-    ],
-    inputs=[
-        media.context,
-        filter.context,
-        selection.context,
-    ]
-)
-def filter_media(media_context, filter_context, selection_context):
-    md_dict = filterMetadata(selection_context['visit'], selection_context['site_id'], json.dumps(
-        filter_context))
-    return [media.compute_output(media_context, md_dict)]
 
 
 @ app.callback(

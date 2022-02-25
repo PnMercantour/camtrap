@@ -3,51 +3,103 @@ import dash_bootstrap_components as dbc
 import dash
 from dash import dcc, html, Input, Output, State, callback_context, no_update
 from dash.exceptions import PreventUpdate
+from datetime import datetime, timedelta
+import json
 from metadata import listSites, getVisitMetadata, groupMedia
-import megaFilter
+import selection
+import filter
+from functools import lru_cache
 from pathlib import Path
 from config import data_root
 
-buttons = dbc.ButtonGroup([
-    dbc.Button(html.I(className="fas fa-solid fa-step-backward"),
-               id='media_control:first', title='Premier média du groupe'),
 
-    dbc.Button(html.I(className="fas fa-solid fa-step-forward"),
-               id='media_control:last', title='dernier média du groupe'),
-])
+prev_button = dbc.Button(html.I(className="fas fa-solid fa-step-backward"),
+                         id='media:ctl_previous', title='Média précédent')
+
+next_button = dbc.Button(html.I(className="fas fa-solid fa-step-forward"),
+                         id='media:ctl_next', title='Média suivant')
+
+item_slider = dcc.Slider(id="media:item", min=1, max=100, step=1, included=False, marks=None, tooltip={
+    'placement': 'bottom', 'always_visible': True},)
+
+first_in_group_button = dbc.Button(html.I(className="fas fa-solid fa-backward"),
+                                   id='media:ctl_first', title='Premier média du groupe')
+
+last_in_group_button = dbc.Button(html.I(className="fas fa-solid fa-forward"),
+                                  id='media:ctl_last', title='Dernier média du groupe')
+
+in_group_slider = dcc.Slider(id="media:zoom_item", min=1, max=100, step=1, included=False, marks=None, tooltip={
+    'placement': 'bottom', 'always_visible': True},)
+
+prev_group_button = dbc.Button(html.I(className="fas fa-solid fa-fast-backward"),
+                               id='media_group:ctl_previous', title='Premier média du groupe précédent')
+
+next_group_button = dbc.Button(html.I(className="fas fa-solid fa-fast-forward"),
+                               id='media_group:ctl_next', title='Premier média du groupe suivant')
+
+group_slider = dcc.Slider(id="media_group:item", min=1, max=100, step=1, included=False, marks=None, tooltip={
+    'placement': 'bottom', 'always_visible': True},)
+
+group_interval = dcc.Dropdown(
+    id='media_group:interval',
+    clearable=False,
+    value=600,
+    options=[
+        {'label': '5s', 'value': 5},
+        {'label': '10s', 'value': 10},
+        {'label': '30s', 'value': 30},
+        {'label': '1mn', 'value': 60},
+        {'label': '5mn', 'value': 300},
+        {'label': '10mn', 'value': 600},
+        {'label': '30mn', 'value': 1800},
+        {'label': '1h', 'value': 3600},
+        {'label': '3h', 'value': 10800}
+    ],
+)
 
 card = dbc.Card([
     dbc.CardHeader([
-        "Media",
-        buttons,
+        "Médias",
     ]),
     dbc.CardBody([
         dbc.Row([
-            dbc.Col("Fichier", width=2),
-            dbc.Col(id='media:path'),
+            dbc.Col("Fichier", width=3),
+            dbc.Tooltip(id='media:path', target='media:fileName'),
+            dbc.Col(id='media:fileName'),
         ]),
         dbc.Row([
-            dbc.Col("Date", width=2),
+            dbc.Col("Date", width=3),
             dbc.Col(id='media:startTime'),
         ]),
         dbc.Row([
-            dbc.Col("Durée", width=2),
+            dbc.Tooltip("Durée du média", target='media:duration'),
+            dbc.Col('Média', width=3),
             dbc.Col(id='media:duration'),
         ]),
         dbc.Row([
-            dbc.Col([
-                dbc.Button(html.I(className="fas fa-solid fa-backward"),
-                           id='media:ctl_previous', title='Média précédent'),
-                dbc.Button(html.I(className="fas fa-solid fa-forward"),
-                           id='media:ctl_next', title='Média suivant'), ], width=3),
-            dbc.Col(
-                dcc.Slider(id="media:item", min=1, max=100, step=1, included=False, marks=None, tooltip={
-                           'placement': 'bottom', 'always_visible': True},),
-                width=9,
-            )
-
+            dbc.Col([prev_button, next_button], width=3),
+            dbc.Col(item_slider, width=9),
         ]),
-
+        dbc.Row([
+            dbc.Col("Médias du groupe", width=3),
+            dbc.Tooltip("Durée du groupe de médias",
+                        target='media_group:duration'),
+            dbc.Col(id='media_group:duration'),
+        ]),
+        dbc.Row([
+            dbc.Col([first_in_group_button, last_in_group_button], width=3),
+            dbc.Col(in_group_slider, width=9),
+        ]),
+        html.Hr(),
+        dbc.Row([
+            dbc.Col('Groupes', width=3),
+            dbc.Col('Intervalle', width=3),
+        ]),
+        dbc.Row([
+            dbc.Col([prev_group_button, next_group_button], width=3),
+            dbc.Col(group_interval, width=3),
+            dbc.Col(group_slider, width=6),
+        ]),
         dcc.Store(id='media:cookie', storage_type='local'),
     ])
 ])
@@ -60,6 +112,7 @@ output = dict(
     ),
     info=dict(
         path=Output('media:path', 'children'),
+        fileName=Output('media:fileName', 'children'),
         startTime=Output('media:startTime', 'children'),
         duration=Output('media:duration', 'children'),
     ),
@@ -70,6 +123,7 @@ output = dict(
     cookie=Output('media:cookie', 'data'),
 )
 
+
 context = dict(
     value=Input("media:item", "value"),
     control=dict(
@@ -78,6 +132,7 @@ context = dict(
     ),
     cookie=State("media:cookie", "data"))
 
+interval = Input('media_group:interval', 'value')
 path = Input('media:path', 'children')
 
 
@@ -92,6 +147,7 @@ def compute_output(context, md_dict):
             ),
             info=dict(
                 path=None,
+                fileName=None,
                 startTime=None,
                 duration=None,
             ),
@@ -123,6 +179,7 @@ def compute_output(context, md_dict):
             ),
             info=dict(
                 path=md['path'],
+                fileName=md['fileName'],
                 startTime=md['startTime'],
                 duration=md['duration'],
             ),
@@ -164,6 +221,7 @@ def compute_output(context, md_dict):
         ),
         info=dict(
             path=md['path'],
+            fileName=md['fileName'],
             startTime=md['startTime'],
             duration=md['duration'],
         ),
@@ -173,6 +231,49 @@ def compute_output(context, md_dict):
         ),
         cookie=cookie,
     )
+
+
+def groupMedias(metadata, interval):
+    """  Group medias when end time /start time difference is smaller than interval (a number of seconds). metadata MUST be sorted by time ascending"""
+    delta = timedelta(seconds=interval)
+    g = None
+    groups = []
+    end_time = None
+    for idx, md in enumerate(metadata):
+        start_time = datetime.fromisoformat(md['startTime'])
+        if end_time is None or end_time + delta < start_time:
+            g = dict(start=idx, end=idx, startTime=md['startTime'])
+            groups.append(g)
+        end_time = start_time + timedelta(seconds=md['duration'])
+        g['endTime'] = end_time.isoformat()
+        g['end'] = idx
+    return groups
+
+
+@ lru_cache
+def build_groups(interval, visit, site_id, filter_s):
+    # result from filterMetadata is shared among all values of group_context
+    md_dict = filter.filterMetadata(visit, site_id, filter_s)
+    groups = groupMedias(md_dict['metadata'], interval)
+    return dict(md_dict, groups=groups)
+
+
+@ dash.callback(
+    output=[
+        output,
+    ],
+    inputs=[
+        context,
+        interval,
+        filter.context,
+        selection.context,
+    ]
+)
+def update_media(media_context, interval, filter_context, selection_context):
+    filter_s = json.dumps(filter_context)
+    md_dict = build_groups(
+        interval, selection_context['visit'], selection_context['site_id'], filter_s)
+    return [compute_output(media_context, md_dict)]
 
 
 # @ dash.callback(

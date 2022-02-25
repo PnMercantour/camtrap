@@ -42,7 +42,7 @@ def getVisitMetadata(visit, site_id):
         return md
 
 
-@lru_cache
+@lru_cache  # for improved memory usage (not for performance)
 def getVisitMetadataFromCache(visit, site_id):
     return getVisitMetadata(visit, site_id)
 
