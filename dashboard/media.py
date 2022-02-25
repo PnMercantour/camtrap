@@ -1,6 +1,8 @@
+from multiprocessing.sharedctypes import Value
 import dash_bootstrap_components as dbc
 import dash
-from dash import dcc, html, Input, Output, State, callback_context
+from dash import dcc, html, Input, Output, State, callback_context, no_update
+from dash.exceptions import PreventUpdate
 from metadata import listSites, getVisitMetadata, groupMedia
 import megaFilter
 from pathlib import Path
@@ -9,10 +11,7 @@ from config import data_root
 buttons = dbc.ButtonGroup([
     dbc.Button(html.I(className="fas fa-solid fa-step-backward"),
                id='media_control:first', title='Premier média du groupe'),
-    dbc.Button(html.I(className="fas fa-solid fa-backward"),
-               id='media_control:previous', title='Média précédent'),
-    dbc.Button(html.I(className="fas fa-solid fa-forward"),
-               id='media_control:next', title='Média suivant'),
+
     dbc.Button(html.I(className="fas fa-solid fa-step-forward"),
                id='media_control:last', title='dernier média du groupe'),
 ])
@@ -23,33 +22,157 @@ card = dbc.Card([
         buttons,
     ]),
     dbc.CardBody([
-        dbc.Label('Media', id='media_count'),
-        dcc.Slider(min=1, max=100, step=1, marks={
-                   1: '1', 100: '100'}, included=False),
-        dcc.Dropdown(
-            id='select:media',
-            clearable=False,
-            options=[]
-        ),
-        dcc.Store(id='media:cookie')
+        dbc.Row([
+            dbc.Col("Fichier", width=2),
+            dbc.Col(id='media:path'),
+        ]),
+        dbc.Row([
+            dbc.Col("Date", width=2),
+            dbc.Col(id='media:startTime'),
+        ]),
+        dbc.Row([
+            dbc.Col("Durée", width=2),
+            dbc.Col(id='media:duration'),
+        ]),
+        dbc.Row([
+            dbc.Col([
+                dbc.Button(html.I(className="fas fa-solid fa-backward"),
+                           id='media:ctl_previous', title='Média précédent'),
+                dbc.Button(html.I(className="fas fa-solid fa-forward"),
+                           id='media:ctl_next', title='Média suivant'), ], width=3),
+            dbc.Col(
+                dcc.Slider(id="media:item", min=1, max=100, step=1, included=False, marks=None, tooltip={
+                           'placement': 'bottom', 'always_visible': True},),
+                width=9,
+            )
+
+        ]),
+
+        dcc.Store(id='media:cookie', storage_type='local'),
     ])
 ])
 
-o_media_options = (Output('select:media', 'options'),
-                   Output('select:media', 'value'),
-                   Output('media_count', 'children'))
+output = dict(
+    item=dict(
+        value=Output('media:item', 'value'),
+        max=Output('media:item', 'max'),
+        marks=Output('media:item', 'marks'),
+    ),
+    info=dict(
+        path=Output('media:path', 'children'),
+        startTime=Output('media:startTime', 'children'),
+        duration=Output('media:duration', 'children'),
+    ),
+    control=dict(
+        disable_first=Output('media:ctl_previous', "disabled"),
+        disable_last=Output('media:ctl_next', 'disabled'),
+    ),
+    cookie=Output('media:cookie', 'data'),
+)
+
+context = dict(
+    value=Input("media:item", "value"),
+    control=dict(
+        previous=Input('media:ctl_previous', 'n_clicks'),
+        next=Input('media:ctl_next', 'n_clicks'),
+    ),
+    cookie=State("media:cookie", "data"))
+
+path = Input('media:path', 'children')
 
 
-def to_media_options(md_dict):
-    return ([{'label': media['startTime'], 'value': media['path']}
-            for media in md_dict['filtered']],
-            md_dict['filtered'][0]['path'] if len(
-                md_dict['filtered']) > 0 else None,
-            f"Media [{len(md_dict['filtered'])}/{len(md_dict['raw'])}]")
+def compute_output(context, md_dict):
+    metadata = md_dict['metadata']
+    if metadata is None or len(metadata) == 0:
+        return dict(
+            item=dict(
+                value=None,
+                max=no_update,
+                marks=None,
+            ),
+            info=dict(
+                path=None,
+                startTime=None,
+                duration=None,
+            ),
+            control=dict(
+                disable_first=True,
+                disable_last=True,
+            ),
+            cookie=None,
+        )
+    triggers = [trigger['prop_id'] for trigger in callback_context.triggered]
+    media_triggers = [trigger for trigger in triggers if 'media:' in trigger]
+    if len(media_triggers) > 0:
+        print(media_triggers)
+        trigger = media_triggers[0]
+        # we don't expect multiple triggers. Process the first one
+        if trigger == 'media:item.value':
+            value = context["value"]
+        if trigger == 'media:ctl_previous.n_clicks':
+            value = context['value'] - 1
+        if trigger == 'media:ctl_next.n_clicks':
+            value = context['value'] + 1
+        md = metadata[value - 1]
+        cookie = dict(md, visit=md_dict["visit"], site_id=md_dict["site_id"])
+        return dict(
+            item=dict(
+                value=value,
+                max=no_update,
+                marks=no_update,
+            ),
+            info=dict(
+                path=md['path'],
+                startTime=md['startTime'],
+                duration=md['duration'],
+            ),
+            control=dict(
+                disable_first=(value == 1),
+                disable_last=(value == len(metadata)),
+            ),
+            cookie=cookie,
+        )
+    # not a media trigger, find the closest item if still on the same visit
+    print('context', context)
+    old_cookie = context['cookie']
+    if old_cookie is not None:
+        if md_dict['visit'] == old_cookie.get("visit") and md_dict['site_id'] == old_cookie.get('site_id'):
+            print('match____________')
+            for idx, md in enumerate(metadata):
+                value = idx + 1
+                if md['fileName'] == old_cookie['fileName']:
+                    break
+                if md['startTime'] > old_cookie['startTime']:
+                    break
+            else:
+                value = 1
+        else:
+            print('no match')
+            value = 1
+    else:
+        value = 1
+    md = metadata[value - 1]
+    marks = {}
+    marks[len(metadata)] = str(len(metadata))
+    cookie = dict(md, visit=md_dict["visit"], site_id=md_dict["site_id"])
 
-
-context = dict(path=Input('select:media', 'value'), controls=(Input("media_control:first", 'n_clicks'), Input("media_control: previous", 'n_clicks'), Input('media_control:next', 'n_clicks'),
-                                                              Input('media_control:last', 'n_clicks')))
+    return dict(
+        item=dict(
+            value=value,
+            max=len(metadata),
+            marks=marks,
+        ),
+        info=dict(
+            path=md['path'],
+            startTime=md['startTime'],
+            duration=md['duration'],
+        ),
+        control=dict(
+            disable_first=(value == 1),
+            disable_last=(value == len(metadata)),
+        ),
+        cookie=cookie,
+    )
 
 
 # @ dash.callback(

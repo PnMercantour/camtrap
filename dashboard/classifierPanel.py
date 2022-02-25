@@ -49,75 +49,75 @@ classifier_panel = dbc.Card([
 ])
 
 
-@ dash.callback(
-    Output('classifier:valid', 'value'),
-    Output('classifier:tag', 'value'),
-    Output('classifier:population', 'value'),
-    Output('classifier:comment', 'value'),
-    Output('classifier:store', 'data'),
-    Input('select:media', 'value'),
-    State('select:visit', 'value'),
-    State('select:site', 'value'),
-    State('classifier:valid', 'value'),
-    State('classifier:tag', 'value'),
-    State('classifier:population', "value"),
-    State('classifier:comment', 'value'),
-    Input('classifier:group', 'value'),
-    Input('classifier:reset', 'n_clicks'),
-    Input('classifier:abort', 'n_clicks'),
-    Input('classifier:commit', 'n_clicks'),
-    State('classifier:store', 'data'),
-)
-def classifier_logic(media, visit, site_id, valid, tag, population, comment, group, delete, abort, commit, store):
-    print(store)
-    changed_id = [p['prop_id'] for p in callback_context.triggered][0]
-    if group:
-        if changed_id in ['classifier:group.value', 'select:media.value', 'classifier:abort.n_clicks']:
-            print('load group properties and compare')
-            raise PreventUpdate
-        if changed_id in ['classifier:reset.n_clicks']:
-            print('reset group properties')
-            raise PreventUpdate
-        if changed_id in ['classifier:commit.n_clicks']:
-            print('commit group edition')
-            raise PreventUpdate
-        else:
-            print('unhandled changed_id while in group mode', changed_id)
-            return [
-                valid,
-                tag,
-                population,
-                comment,
-                store,
-            ]
-    else:
-        if changed_id in ['classifier:group.value', 'select:media.value', 'classifier:abort.n_clicks']:
-            print('load media properties')
-            classifier = loadClassifier(
-                site_id, visit, Path(media).name)
-            return[
-                classifier.get('valid'),
-                classifier.get('tag'),
-                classifier.get('population'),
-                classifier.get('comment'),
-                classifier,
-            ]
-        if changed_id == 'classifier:reset.n_clicks':
-            print('reset media properties')
-            raise PreventUpdate
-        if changed_id == 'classifier:commit.n_clicks':
-            print('commit media properties')
-            store['tag'] = tag
-            store['population'] = population
-            store['comment'] = comment
-            store['valid'] = valid
-            success = dumpClassifier(
-                store, site_id, visit, Path(media).name)
-            store['serial'] = store['serial'] + 1  # hack
-            return [
-                valid,
-                tag,
-                population,
-                comment,
-                store
-            ]
+# @ dash.callback(
+#     Output('classifier:valid', 'value'),
+#     Output('classifier:tag', 'value'),
+#     Output('classifier:population', 'value'),
+#     Output('classifier:comment', 'value'),
+#     Output('classifier:store', 'data'),
+#     Input('select:media', 'value'),
+#     State('select:visit', 'value'),
+#     State('select:site', 'value'),
+#     State('classifier:valid', 'value'),
+#     State('classifier:tag', 'value'),
+#     State('classifier:population', "value"),
+#     State('classifier:comment', 'value'),
+#     Input('classifier:group', 'value'),
+#     Input('classifier:reset', 'n_clicks'),
+#     Input('classifier:abort', 'n_clicks'),
+#     Input('classifier:commit', 'n_clicks'),
+#     State('classifier:store', 'data'),
+# )
+# def classifier_logic(media, visit, site_id, valid, tag, population, comment, group, delete, abort, commit, store):
+#     print(store)
+#     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
+#     if group:
+#         if changed_id in ['classifier:group.value', 'select:media.value', 'classifier:abort.n_clicks']:
+#             print('load group properties and compare')
+#             raise PreventUpdate
+#         if changed_id in ['classifier:reset.n_clicks']:
+#             print('reset group properties')
+#             raise PreventUpdate
+#         if changed_id in ['classifier:commit.n_clicks']:
+#             print('commit group edition')
+#             raise PreventUpdate
+#         else:
+#             print('unhandled changed_id while in group mode', changed_id)
+#             return [
+#                 valid,
+#                 tag,
+#                 population,
+#                 comment,
+#                 store,
+#             ]
+#     else:
+#         if changed_id in ['classifier:group.value', 'select:media.value', 'classifier:abort.n_clicks']:
+#             print('load media properties')
+#             classifier = loadClassifier(
+#                 site_id, visit, Path(media).name)
+#             return[
+#                 classifier.get('valid'),
+#                 classifier.get('tag'),
+#                 classifier.get('population'),
+#                 classifier.get('comment'),
+#                 classifier,
+#             ]
+#         if changed_id == 'classifier:reset.n_clicks':
+#             print('reset media properties')
+#             raise PreventUpdate
+#         if changed_id == 'classifier:commit.n_clicks':
+#             print('commit media properties')
+#             store['tag'] = tag
+#             store['population'] = population
+#             store['comment'] = comment
+#             store['valid'] = valid
+#             success = dumpClassifier(
+#                 store, site_id, visit, Path(media).name)
+#             store['serial'] = store['serial'] + 1  # hack
+#             return [
+#                 valid,
+#                 tag,
+#                 population,
+#                 comment,
+#                 store
+#             ]

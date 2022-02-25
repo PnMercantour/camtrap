@@ -14,6 +14,23 @@ card = dbc.Card([
     ])
 ])
 
+# filter_card = dbc.Card([
+#     dbc.CardHeader("Filtrer"),
+#     dbc.CardBody([
+#         dbc.Label("par date"),
+#         dcc.DatePickerRange(
+#             display_format='Y-M-D', start_date_placeholder_text='début', end_date_placeholder_text='fin', clearable=True),
+#         dbc.Label("par espèce"),
+#         dcc.Dropdown(
+#             multi=True,
+#             options=[
+#                 {'label': 'Loup', 'value': 'loup'},
+#                 {'label': 'sanglier', 'value': 'sanglier'},
+#                 {'label': 'Faune sauvage', 'value': 'faune_sauvage'},
+#                 {'label': 'Faune domestique', 'value': 'faune_domestique'}
+#             ])
+#     ])
+# ])
 
 context = dict(
     megadetector=dict(

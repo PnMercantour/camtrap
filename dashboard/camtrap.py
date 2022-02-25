@@ -15,7 +15,6 @@ import metadata
 from metadata import listSites, listVisits, groupMedia
 import selection
 from selection import selection_card, t_selection_context
-from media import to_media_options, o_media_options
 import media
 import filter
 from group import mediaGroup, mediaGroups, group_card
@@ -43,25 +42,6 @@ server = app.server
 @server.route('/video/<path:path>')
 def serve_video(path):
     return flask.send_from_directory(video_root, path)
-
-
-filter_card = dbc.Card([
-    dbc.CardHeader("Filtrer"),
-    dbc.CardBody([
-        dbc.Label("par date"),
-        dcc.DatePickerRange(
-            display_format='Y-M-D', start_date_placeholder_text='début', end_date_placeholder_text='fin', clearable=True),
-        dbc.Label("par espèce"),
-        dcc.Dropdown(
-            multi=True,
-            options=[
-                {'label': 'Loup', 'value': 'loup'},
-                {'label': 'sanglier', 'value': 'sanglier'},
-                {'label': 'Faune sauvage', 'value': 'faune_sauvage'},
-                {'label': 'Faune domestique', 'value': 'faune_domestique'}
-            ])
-    ])
-])
 
 
 map_tab = dbc.Tab([
@@ -165,42 +145,35 @@ app.layout = dbc.Container([
 )
 
 
-def group_of_media(groups, media):
-    if media:
-        # TODO trouver le groupe correspondant au média
-        return groups[0]['startTime'] if len(groups) > 0 else None
-    else:
-        return groups[0]['startTime'] if len(groups) > 0 else None
-
-
 @lru_cache
-def filtered_metadata(filter_s, visit, site_id):
+def filterMetadata(visit, site_id, filter_s):
     context = json.loads(filter_s)
     print(context)
-    raw = metadata.getVisitMetadataFromCache(visit, site_id)
-    filtered = filter.filter(raw, context, visit, site_id)
-    return dict(raw=raw, filtered=filtered, context=context, visit=visit, site_id=site_id)
+    raw_metadata = metadata.getVisitMetadataFromCache(visit, site_id)
+    filtered = filter.filter(raw_metadata, context, visit, site_id)
+    return dict(raw_metadata=raw_metadata, metadata=filtered, context=context, visit=visit, site_id=site_id)
 
 
 @ app.callback(
     output=[
-        o_media_options,
+        media.output,
     ],
     inputs=[
+        media.context,
         filter.context,
         selection.context,
     ]
 )
-def filter_media(filter_context, context):
-    md_dict = filtered_metadata(json.dumps(
-        filter_context), context['visit'], context['site_id'])
-    return [to_media_options(md_dict)]
+def filter_media(media_context, filter_context, selection_context):
+    md_dict = filterMetadata(selection_context['visit'], selection_context['site_id'], json.dumps(
+        filter_context))
+    return [media.compute_output(media_context, md_dict)]
 
 
 @ app.callback(
     Output('movie_player', 'src'),
     Output('movie_player', 'hidden'),
-    Input('select:media', 'value'),
+    media.path,
     Input('mediaserver:custom', 'value'),
     Input('mediaserver:url', 'value'),
 )

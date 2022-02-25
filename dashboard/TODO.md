@@ -6,7 +6,9 @@ statut de l'observation
 - signalée (manque un taxon, autre problème)
 - media à supprimer
 
+# Sélection
 Info Site (mettre le nom du site dans le label)
+ajouter le nombre de médias dans la sélection (avant filtrage)
 
 # Filtre
 ajouter un switch: inclure les déclenchements intempestifs
@@ -19,10 +21,10 @@ ajouter un filtre observation
 - statut de l'obs (validée, non validée)
 - observation signalée
 
+Seuil de détection : essayer input, étendre la précision
 
-Seuil de détection : essayer input,
-
-Media : slider pour voir la position du media dans la visite (1 à nbre de medias, valeur courante) encadré par boutons previous /next
+# Media
+slider pour voir la position du media dans la visite (1 à nbre de medias, valeur courante) encadré par boutons previous /next
 slider pour voir la position du media dans le groupe (1 à nbre de medias). encadré par boutons first/last
 Groupe : slider pour voir la position du groupe dans la visite (1 à nbre de groupes) encadré par boutons groupe précédent, groupe suivant
 
