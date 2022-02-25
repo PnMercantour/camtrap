@@ -2,16 +2,22 @@ from dash import Dash, html, dcc, Input, Output, State, callback_context, no_upd
 from dash.exceptions import PreventUpdate
 import flask
 import dash_bootstrap_components as dbc
+from functools import lru_cache
 
 import json
 from pathlib import Path
+
+from pandas import options
 from dataFinder import *
 import stats
 from classifierPanel import classifier_panel
-from metadata import listSites, listVisits, getVisitMetadata, groupMedia
-from selection import selection_card
-from media import media_card
-from detection import detection_card
+import metadata
+from metadata import listSites, listVisits, groupMedia
+import selection
+from selection import selection_card, t_selection_context
+from media import to_media_options, o_media_options
+import media
+import filter
 from group import mediaGroup, mediaGroups, group_card
 
 from config import project_root, video_root, data_root
@@ -58,12 +64,9 @@ filter_card = dbc.Card([
 ])
 
 
-with (project_root / "config/tags.json").open() as f:
-    tags = json.load(f)
-tag_controls = dbc.RadioItems(
-    options=[{"label": tag["label"], "value":tag["value"]} for tag in tags])
-
-map_tab = dbc.Tab(
+map_tab = dbc.Tab([
+    html.H1("Bientôt une carte des sites!")
+],
     tab_id='map',
     label='Carte',
 )
@@ -80,10 +83,12 @@ video_tab = dbc.Tab(
         ),
     ])
 
-image_tab = dbc.Tab(
+image_tab = dbc.Tab([
+    html.H1("Bientôt les plus belles images extraites du média!"),
+    dbc.Carousel(items=[], style={'height': 500}),
+],
     tab_id='image',
     label='Images',
-    children=dbc.Carousel(items=[], style={'height': 500})
 )
 
 stats_tab = dbc.Tab(
@@ -104,7 +109,7 @@ preferences_tab = dbc.Tab(
         dbc.Card([
             dbc.CardHeader('Sélection'),
             dbc.CardBody([
-                dbc.Switch(label='Regrouper les media',
+                dbc.Switch(label='Regrouper les médias',
                            value=True, id='prefs:group_media'),
             ])
         ]),
@@ -136,21 +141,22 @@ info_string = html.Div(id='file_info')
 app.layout = dbc.Container([
     dbc.Row([
             dbc.Col(
-                html.H2("Camtrap - Pièges photos du Parc national du Mercantour"), md=10),
-            dbc.Col(auth.component, md=2)
-            ], justify='between'),
+                html.H2("Camtrap - Pièges photos du Parc national du Mercantour"), md=9),
+            dbc.Col(auth.component, md=3),
+            ],),
     html.Hr(),
     dbc.Row(
         [
             dbc.Col([
                 selection_card,
-                detection_card,
-                media_card,
-                # filter_card,
-                group_card,
+                filter.card,
             ], md=3),
             dbc.Col([tabs, info_string], md=6),
-            dbc.Col(classifier_panel, md=3)
+            dbc.Col([
+                classifier_panel,
+                media.card,
+                group_card,
+            ], md=3)
         ],
         align="top",
     ),
@@ -161,71 +167,34 @@ app.layout = dbc.Container([
 
 def group_of_media(groups, media):
     if media:
-        # TODO trouver le groupe correspondant au media
+        # TODO trouver le groupe correspondant au média
         return groups[0]['startTime'] if len(groups) > 0 else None
     else:
         return groups[0]['startTime'] if len(groups) > 0 else None
+
+
+@lru_cache
+def filtered_metadata(filter_s, visit, site_id):
+    context = json.loads(filter_s)
+    print(context)
+    raw = metadata.getVisitMetadataFromCache(visit, site_id)
+    filtered = filter.filter(raw, context, visit, site_id)
+    return dict(raw=raw, filtered=filtered, context=context, visit=visit, site_id=site_id)
 
 
 @ app.callback(
-    Output('group:select', 'options'),
-    Output('group:select', 'value'),
-    Input('group:interval', 'value'),
-    Input('select:visit', 'value'),
-    State('select:site', 'value'),
-    State('group:select', 'options'),
-    State('group:select', 'value'),
-    State('prefs:group_media', 'value'),
-    Input('group_control:previous', 'n_clicks'),
-    Input('group_control:next', 'n_clicks'),
-    # Input('group_control:first', 'n_clicks'),
-    # Input('group_control:last', 'n_clicks'),
+    output=[
+        o_media_options,
+    ],
+    inputs=[
+        filter.context,
+        selection.context,
+    ]
 )
-def update_group_dropdown(interval, date, site_id, options, value, group_media, _1, _2):
-    changed_id = [p['prop_id'] for p in callback_context.triggered][0]
-    if 'group_media' in changed_id or 'group:interval' in changed_id:
-        if group_media:
-            groups = groupMedia(getVisitMetadata(
-                date, site_id), interval)
-            # TODO passer les metadonnées du media
-            current_group = group_of_media(groups, None)
-            return [options, current_group]
-        elif 'group:interval' in changed_id:
-            groups = groupMedia(getVisitMetadata(
-                date, site_id), interval)
-            return [groups, None]
-        else:
-            return [options, None]
-    if 'select:visit' in changed_id:
-        groups = groupMedia(getVisitMetadata(
-            date, site_id), interval)
-        options = [{
-            'label': f"{group['startTime']} ({len(group['metadata'])})",
-            'value': group['startTime']
-        } for group in groups]
-        value = groups[0]['startTime'] if len(
-            groups) > 0 and group_media else None
-        return [options, value]
-    values = [item['value'] for item in options]
-    if len(values) == 0:
-        return [no_update, no_update]
-    if 'group_control' in changed_id:
-        if value is None:
-            # TODO mettre en cache les metadonnées du groupe
-            groups = groupMedia(getVisitMetadata(
-                date, site_id), interval)
-            # TODO passer les metadonnées du media
-            value = group_of_media(groups, None)
-        if 'first' in changed_id:
-            return [no_update, values[0]]
-        if 'last' in changed_id:
-            return [no_update, values[-1]]
-        if 'previous' in changed_id:
-            return [no_update, values[max(values.index(value) - 1, 0)]]
-        if 'next' in changed_id:
-            return [no_update, values[min(values.index(value) + 1, len(values) - 1)]]
-    else:
-        return [no_update, no_update]
+def filter_media(filter_context, context):
+    md_dict = filtered_metadata(json.dumps(
+        filter_context), context['visit'], context['site_id'])
+    return [to_media_options(md_dict)]
 
 
 @ app.callback(

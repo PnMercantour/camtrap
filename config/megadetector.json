@@ -1,0 +1,14 @@
+[
+    {
+        "label": "Faune",
+        "value": "1"
+    },
+    {
+        "label": "Humain",
+        "value": "2"
+    },
+    {
+        "label": "Véhicule",
+        "value": "3"
+    }
+]

@@ -1,9 +1,9 @@
 from pathlib import Path
 import json
-import argparse
 from config import data_root
 from dataFinder import *
 from datetime import datetime, timedelta
+from functools import lru_cache
 
 exiftoolDateFormat = '%Y:%m:%d %H:%M:%S'
 
@@ -40,6 +40,11 @@ def getVisitMetadata(visit, site_id):
     with path.open('r') as f:
         md = json.load(f)
         return md
+
+
+@lru_cache
+def getVisitMetadataFromCache(visit, site_id):
+    return getVisitMetadata(visit, site_id)
 
 
 def buildMetadata(visit, site_id):

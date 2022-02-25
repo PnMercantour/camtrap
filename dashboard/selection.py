@@ -71,3 +71,12 @@ def update_selection_dropdown(site_id, visit_cookie):
 )
 def update_visit_cookie(visit, site_id):
     return dict(visit=visit, site_id=site_id)
+
+
+context = dict(visit=Input('select:visit', 'value'),
+               site_id=Input('select:site', 'value'))
+
+
+def t_selection_context():
+    # just check visit, if site has changed ... visit has changed too
+    return 'select:visit.value' in [trigger['prop_id'] for trigger in callback_context.triggered]
