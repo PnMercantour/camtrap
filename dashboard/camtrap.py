@@ -14,7 +14,7 @@ from classifierPanel import classifier_panel
 import metadata
 from metadata import listSites, listVisits, groupMedia
 import selection
-from selection import selection_card, t_selection_context
+from selection import t_selection_context
 import media
 import filter
 
@@ -127,7 +127,7 @@ app.layout = dbc.Container([
     dbc.Row(
         [
             dbc.Col([
-                selection_card,
+                selection.card,
                 filter.card,
             ], md=3),
             dbc.Col([tabs, info_string], md=6),

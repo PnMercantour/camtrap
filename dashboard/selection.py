@@ -4,7 +4,7 @@ import dash
 import random
 from metadata import listSites, listVisits, getVisitMetadata
 
-selection_card = dbc.Card([
+card = dbc.Card([
     dbc.CardHeader("Sélection"),
     dbc.CardBody([
         dbc.Label("Site"),

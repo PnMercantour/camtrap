@@ -117,8 +117,16 @@ output = dict(
         duration=Output('media:duration', 'children'),
     ),
     control=dict(
-        disable_first=Output('media:ctl_previous', "disabled"),
-        disable_last=Output('media:ctl_next', 'disabled'),
+        disable_previous=Output('media:ctl_previous', "disabled"),
+        disable_next=Output('media:ctl_next', 'disabled'),
+        disable_first=Output('media:ctl_first', 'disabled'),
+        disable_last=Output('media:ctl_last', 'disabled'),
+    ),
+    zoom_item=dict(
+        value=Output('media:zoom_item', 'value'),
+        min=Output('media:zoom_item', 'min'),
+        max=Output('media:zoom_item', 'max'),
+        marks=Output('media:zoom_item', 'marks'),
     ),
     cookie=Output('media:cookie', 'data'),
 )
@@ -129,6 +137,12 @@ context = dict(
     control=dict(
         previous=Input('media:ctl_previous', 'n_clicks'),
         next=Input('media:ctl_next', 'n_clicks'),
+        first=Input('media:ctl_first', 'n_clicks'),
+        last=Input('media:ctl_last', 'n_clicks'),
+    ),
+    zoom_item=dict(
+        min=State('media:zoom_item', 'min'),
+        max=State('media:zoom_item', 'max'),
     ),
     cookie=State("media:cookie", "data"))
 
@@ -152,24 +166,78 @@ def compute_output(context, md_dict):
                 duration=None,
             ),
             control=dict(
+                disable_previous=True,
+                disable_next=True,
                 disable_first=True,
                 disable_last=True,
             ),
+            zoom_item=dict(
+                value=None,
+                min=None,
+                max=None,
+                marks=None
+            ),
             cookie=None,
         )
+
+    def first_item_of_group():
+        result = context['zoom_item']['min']
+        print('first in group', result)
+        return result
+
+    def last_item_of_group():
+        result = context['zoom_item']['max']
+        print('last in group', result)
+        return result
+
+    def find_group(item):
+        groups = md_dict['groups']
+        md_idx = item - 1
+        print('find group')
+        for idx, group in enumerate(groups):
+            if group["start"] <= md_idx and group["end"] >= md_idx:
+                return idx + 1, group["start"] + 1, group["end"] + 1
+        raise ValueError((groups, item))
+
     triggers = [trigger['prop_id'] for trigger in callback_context.triggered]
     media_triggers = [trigger for trigger in triggers if 'media:' in trigger]
     if len(media_triggers) > 0:
         print(media_triggers)
         trigger = media_triggers[0]
         # we don't expect multiple triggers. Process the first one
-        if trigger == 'media:item.value':
+        if trigger == 'media:ctl_first.n_clicks':
+            value = first_item_of_group()
+            group_update = False
+        elif trigger == 'media:ctl_last.n_clicks':
+            value = last_item_of_group()
+            group_update = False
+        elif trigger == 'media:zoom_item.value':
+            value = context["zoom_value"]
+            group_update = False
+        elif trigger == 'media:item.value':
             value = context["value"]
-        if trigger == 'media:ctl_previous.n_clicks':
+            group_update = True
+        elif trigger == 'media:ctl_previous.n_clicks':
             value = context['value'] - 1
-        if trigger == 'media:ctl_next.n_clicks':
+            group_update = True
+        elif trigger == 'media:ctl_next.n_clicks':
             value = context['value'] + 1
+            group_update = True
+        else:
+            print('Unhandled trigger', trigger)
+            # reset to stable values
+            value = 1
+            group_update = True
         md = metadata[value - 1]
+        if group_update:
+            print('group update', value)
+            (group_value, zoom_min, zoom_max) = find_group(value)
+            zoom_marks = {}
+            zoom_marks[zoom_max] = str(zoom_max)
+        else:
+            zoom_min = no_update
+            zoom_max = no_update
+            zoom_marks = no_update
         cookie = dict(md, visit=md_dict["visit"], site_id=md_dict["site_id"])
         return dict(
             item=dict(
@@ -184,8 +252,16 @@ def compute_output(context, md_dict):
                 duration=md['duration'],
             ),
             control=dict(
-                disable_first=(value == 1),
-                disable_last=(value == len(metadata)),
+                disable_previous=(value == 1),
+                disable_next=(value == len(metadata)),
+                disable_first=(value == zoom_min),
+                disable_last=(value == zoom_max),
+            ),
+            zoom_item=dict(
+                value=value,
+                min=zoom_min,
+                max=zoom_max,
+                marks=zoom_marks,
             ),
             cookie=cookie,
         )
@@ -212,7 +288,9 @@ def compute_output(context, md_dict):
     marks = {}
     marks[len(metadata)] = str(len(metadata))
     cookie = dict(md, visit=md_dict["visit"], site_id=md_dict["site_id"])
-
+    (group_value, zoom_min, zoom_max) = find_group(value)
+    zoom_marks = {}
+    zoom_marks[zoom_max] = str(zoom_max)
     return dict(
         item=dict(
             value=value,
@@ -226,8 +304,16 @@ def compute_output(context, md_dict):
             duration=md['duration'],
         ),
         control=dict(
-            disable_first=(value == 1),
-            disable_last=(value == len(metadata)),
+            disable_previous=(value == 1),
+            disable_next=(value == len(metadata)),
+            disable_first=(value == zoom_min),
+            disable_last=(value == zoom_max),
+        ),
+        zoom_item=dict(
+            value=value,
+            min=zoom_min,
+            max=zoom_max,
+            marks=zoom_marks,
         ),
         cookie=cookie,
     )
