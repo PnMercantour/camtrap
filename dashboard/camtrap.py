@@ -129,12 +129,12 @@ app.layout = dbc.Container([
             dbc.Col([
                 selection.card,
                 filter.card,
-            ], md=3),
+            ], md=2),
             dbc.Col([tabs, info_string], md=6),
             dbc.Col([
                 classifier_panel,
                 media.card,
-            ], md=3)
+            ], md=4)
         ],
         align="top",
     ),

@@ -14,30 +14,30 @@ from config import data_root
 
 
 prev_button = dbc.Button(html.I(className="fas fa-solid fa-step-backward"),
-                         id='media:ctl_previous', title='Média précédent')
+                         id='media:previous', title='Média précédent')
 
 next_button = dbc.Button(html.I(className="fas fa-solid fa-step-forward"),
-                         id='media:ctl_next', title='Média suivant')
+                         id='media:next', title='Média suivant')
 
-item_slider = dcc.Slider(id="media:item", min=1, max=100, step=1, included=False, marks=None, tooltip={
+item_slider = dcc.Slider(id="media:index", min=1, max=100, step=1, included=False, marks=None, tooltip={
     'placement': 'bottom', 'always_visible': True},)
 
 first_in_group_button = dbc.Button(html.I(className="fas fa-solid fa-backward"),
-                                   id='media:ctl_first', title='Premier média du groupe')
+                                   id='media:first_in_group', title='Premier média du groupe')
 
 last_in_group_button = dbc.Button(html.I(className="fas fa-solid fa-forward"),
-                                  id='media:ctl_last', title='Dernier média du groupe')
+                                  id='media:last_in_group', title='Dernier média du groupe')
 
-in_group_slider = dcc.Slider(id="media:zoom_item", min=1, max=100, step=1, included=False, marks=None, tooltip={
+in_group_slider = dcc.Slider(id="media:in_group_index", min=1, max=100, step=1, included=False, marks=None, tooltip={
     'placement': 'bottom', 'always_visible': True},)
 
 prev_group_button = dbc.Button(html.I(className="fas fa-solid fa-fast-backward"),
-                               id='media_group:ctl_previous', title='Premier média du groupe précédent')
+                               id='media:previous_group', title='Dernier média du groupe précédent')
 
 next_group_button = dbc.Button(html.I(className="fas fa-solid fa-fast-forward"),
-                               id='media_group:ctl_next', title='Premier média du groupe suivant')
+                               id='media:next_group', title='Premier média du groupe suivant')
 
-group_slider = dcc.Slider(id="media_group:item", min=1, max=100, step=1, included=False, marks=None, tooltip={
+group_slider = dcc.Slider(id="media:group_index", min=1, max=100, step=1, included=False, marks=None, tooltip={
     'placement': 'bottom', 'always_visible': True},)
 
 group_interval = dcc.Dropdown(
@@ -56,6 +56,16 @@ group_interval = dcc.Dropdown(
         {'label': '3h', 'value': 10800}
     ],
 )
+
+
+def interval2str(interval):
+    "convert a number to a display friendly string"
+    if interval is None:
+        return None
+    if interval < 60:
+        return f"{round(interval)} s"
+    return str(timedelta(seconds=round(interval))) + ' s'
+
 
 card = dbc.Card([
     dbc.CardHeader([
@@ -81,10 +91,10 @@ card = dbc.Card([
             dbc.Col(item_slider, width=9),
         ]),
         dbc.Row([
-            dbc.Col("Médias du groupe", width=3),
+            dbc.Col("Groupe", width=3),
             dbc.Tooltip("Durée du groupe de médias",
-                        target='media_group:duration'),
-            dbc.Col(id='media_group:duration'),
+                        target='media:group_duration'),
+            dbc.Col(id='media:group_duration'),
         ]),
         dbc.Row([
             dbc.Col([first_in_group_button, last_in_group_button], width=3),
@@ -105,44 +115,51 @@ card = dbc.Card([
 ])
 
 output = dict(
-    item=dict(
-        value=Output('media:item', 'value'),
-        max=Output('media:item', 'max'),
-        marks=Output('media:item', 'marks'),
+    media=dict(
+        index=Output('media:index', 'value'),
+        max=Output('media:index', 'max'),
+        marks=Output('media:index', 'marks'),
+    ),
+    in_group=dict(
+        index=Output('media:in_group_index', 'value'),
+        max=Output('media:in_group_index', 'max'),
+        marks=Output('media:in_group_index', 'marks'),
+    ),
+    group=dict(
+        index=Output('media:group_index', 'value'),
+        max=Output('media:group_index', 'max'),
+        marks=Output('media:group_index', 'marks'),
+    ),
+    control=dict(
+        disable_previous=Output('media:previous', "disabled"),
+        disable_next=Output('media:next', 'disabled'),
+        disable_first_in_group=Output('media:first_in_group', 'disabled'),
+        disable_last_in_group=Output('media:last_in_group', 'disabled'),
+        disable_previous_group=Output('media:previous_group', 'disabled'),
+        disable_next_group=Output('media:next_group', 'disabled'),
     ),
     info=dict(
         path=Output('media:path', 'children'),
-        fileName=Output('media:fileName', 'children'),
-        startTime=Output('media:startTime', 'children'),
+        file_name=Output('media:fileName', 'children'),
+        start_time=Output('media:startTime', 'children'),
         duration=Output('media:duration', 'children'),
-    ),
-    control=dict(
-        disable_previous=Output('media:ctl_previous', "disabled"),
-        disable_next=Output('media:ctl_next', 'disabled'),
-        disable_first=Output('media:ctl_first', 'disabled'),
-        disable_last=Output('media:ctl_last', 'disabled'),
-    ),
-    zoom_item=dict(
-        value=Output('media:zoom_item', 'value'),
-        min=Output('media:zoom_item', 'min'),
-        max=Output('media:zoom_item', 'max'),
-        marks=Output('media:zoom_item', 'marks'),
+        group_duration=Output('media:group_duration', 'children'),
     ),
     cookie=Output('media:cookie', 'data'),
 )
 
 
 context = dict(
-    value=Input("media:item", "value"),
+    media_index=Input("media:index", "value"),
+    in_group_index=Input('media:in_group_index', 'value'),
+    group_index=Input('media:group_index', 'value'),
     control=dict(
-        previous=Input('media:ctl_previous', 'n_clicks'),
-        next=Input('media:ctl_next', 'n_clicks'),
-        first=Input('media:ctl_first', 'n_clicks'),
-        last=Input('media:ctl_last', 'n_clicks'),
-    ),
-    zoom_item=dict(
-        min=State('media:zoom_item', 'min'),
-        max=State('media:zoom_item', 'max'),
+        previous=Input('media:previous', 'n_clicks'),
+        next=Input('media:next', 'n_clicks'),
+        first_in_group=Input('media:first_in_group', 'n_clicks'),
+        last_in_group=Input('media:last_in_group', 'n_clicks'),
+        previous_group=Input('media:previous_group', 'n_clicks'),
+        next_group=Input('media:next_group', 'n_clicks'),
     ),
     cookie=State("media:cookie", "data"))
 
@@ -152,52 +169,60 @@ path = Input('media:path', 'children')
 
 def compute_output(context, md_dict):
     metadata = md_dict['metadata']
+    groups = md_dict['groups']
     if metadata is None or len(metadata) == 0:
         return dict(
-            item=dict(
-                value=None,
+            media=dict(
+                index=None,
                 max=no_update,
                 marks=None,
             ),
-            info=dict(
-                path=None,
-                fileName=None,
-                startTime=None,
-                duration=None,
+            in_group=dict(
+                index=None,
+                max=None,
+                marks=None
+            ),
+            group=dict(
+                index=None,
+                max=None,
+                marks=None
             ),
             control=dict(
                 disable_previous=True,
                 disable_next=True,
-                disable_first=True,
-                disable_last=True,
+                disable_first_in_group=True,
+                disable_last_in_group=True,
+                disable_previous_group=True,
+                disable_next_group=True,
             ),
-            zoom_item=dict(
-                value=None,
-                min=None,
-                max=None,
-                marks=None
+            info=dict(
+                path=None,
+                file_name=None,
+                start_time=None,
+                duration=None,
+                group_duration=None,
             ),
             cookie=None,
         )
 
-    def first_item_of_group():
-        result = context['zoom_item']['min']
-        print('first in group', result)
-        return result
-
-    def last_item_of_group():
-        result = context['zoom_item']['max']
-        print('last in group', result)
-        return result
-
-    def find_group(item):
-        groups = md_dict['groups']
-        md_idx = item - 1
-        print('find group')
+    def attr(media_index):
+        "-1 stands for last available index"
+        md_idx = media_index - 1 if media_index > 0 else len(metadata) - 1
         for idx, group in enumerate(groups):
             if group["start"] <= md_idx and group["end"] >= md_idx:
-                return idx + 1, group["start"] + 1, group["end"] + 1
-        raise ValueError((groups, item))
+                return ({
+                    "media_index": md_idx + 1,
+                    "in_group_index": md_idx - group["start"] + 1,
+                    "group_index": idx + 1,
+                    "in_group_max": group["end"] - group["start"] + 1,
+                    "group_max": len(groups),
+                    "group_duration": (group['end_datetime'] - group['start_datetime']).total_seconds(),
+                })
+        raise ValueError((groups, media_index))
+
+    def group_info(group_index):
+        group = groups[group_index - 1]
+        return {"first_media_index": group["start"] + 1, "last_media_index": group["end"] + 1}
 
     triggers = [trigger['prop_id'] for trigger in callback_context.triggered]
     media_triggers = [trigger for trigger in triggers if 'media:' in trigger]
@@ -205,115 +230,90 @@ def compute_output(context, md_dict):
         print(media_triggers)
         trigger = media_triggers[0]
         # we don't expect multiple triggers. Process the first one
-        if trigger == 'media:ctl_first.n_clicks':
-            value = first_item_of_group()
-            group_update = False
-        elif trigger == 'media:ctl_last.n_clicks':
-            value = last_item_of_group()
-            group_update = False
-        elif trigger == 'media:zoom_item.value':
-            value = context["zoom_value"]
-            group_update = False
-        elif trigger == 'media:item.value':
-            value = context["value"]
-            group_update = True
-        elif trigger == 'media:ctl_previous.n_clicks':
-            value = context['value'] - 1
-            group_update = True
-        elif trigger == 'media:ctl_next.n_clicks':
-            value = context['value'] + 1
-            group_update = True
+        if trigger == 'media:index.value':
+            media_index = context['media_index']
+        elif trigger == 'media:in_group_index.value':
+            media_index = group_info(context['group_index'])[
+                'first_media_index'] + context['in_group_index'] - 1
+        elif trigger == 'media:group_index.value':
+            media_index = group_info(context['group_index'])[
+                'first_media_index']
+        elif trigger == 'media:previous.n_clicks':
+            media_index = context['media_index'] - 1
+        elif trigger == 'media:next.n_clicks':
+            media_index = context['media_index'] + 1
+        elif trigger == 'media:first_in_group.n_clicks':
+            media_index = group_info(context['group_index'])[
+                'first_media_index']
+        elif trigger == 'media:last_in_group.n_clicks':
+            media_index = group_info(context['group_index'])[
+                'last_media_index']
+        elif trigger == 'media:previous_group.n_clicks':
+            media_index = group_info(
+                context["group_index"] - 1)['last_media_index']
+        elif trigger == 'media:next_group.n_clicks':
+            media_index = group_info(
+                context["group_index"] + 1)['first_media_index']
         else:
             print('Unhandled trigger', trigger)
             # reset to stable values
-            value = 1
-            group_update = True
-        md = metadata[value - 1]
-        if group_update:
-            print('group update', value)
-            (group_value, zoom_min, zoom_max) = find_group(value)
-            zoom_marks = {}
-            zoom_marks[zoom_max] = str(zoom_max)
-        else:
-            zoom_min = no_update
-            zoom_max = no_update
-            zoom_marks = no_update
-        cookie = dict(md, visit=md_dict["visit"], site_id=md_dict["site_id"])
-        return dict(
-            item=dict(
-                value=value,
-                max=no_update,
-                marks=no_update,
-            ),
-            info=dict(
-                path=md['path'],
-                fileName=md['fileName'],
-                startTime=md['startTime'],
-                duration=md['duration'],
-            ),
-            control=dict(
-                disable_previous=(value == 1),
-                disable_next=(value == len(metadata)),
-                disable_first=(value == zoom_min),
-                disable_last=(value == zoom_max),
-            ),
-            zoom_item=dict(
-                value=value,
-                min=zoom_min,
-                max=zoom_max,
-                marks=zoom_marks,
-            ),
-            cookie=cookie,
-        )
-    # not a media trigger, find the closest item if still on the same visit
-    print('context', context)
-    old_cookie = context['cookie']
-    if old_cookie is not None:
-        if md_dict['visit'] == old_cookie.get("visit") and md_dict['site_id'] == old_cookie.get('site_id'):
-            print('match____________')
+            media_index = 1
+    else:
+        # not a media trigger, find the closest item if still on the same visit
+        media_index = 1  # fallback value
+        old_cookie = context['cookie']
+        if old_cookie is not None and md_dict['visit'] == old_cookie.get("visit") and md_dict['site_id'] == old_cookie.get('site_id'):
             for idx, md in enumerate(metadata):
-                value = idx + 1
+                media_index = idx + 1
                 if md['fileName'] == old_cookie['fileName']:
                     break
                 if md['startTime'] > old_cookie['startTime']:
                     break
             else:
-                value = 1
-        else:
-            print('no match')
-            value = 1
-    else:
-        value = 1
-    md = metadata[value - 1]
-    marks = {}
-    marks[len(metadata)] = str(len(metadata))
+                media_index = 1
+    md = metadata[media_index - 1]
     cookie = dict(md, visit=md_dict["visit"], site_id=md_dict["site_id"])
-    (group_value, zoom_min, zoom_max) = find_group(value)
-    zoom_marks = {}
-    zoom_marks[zoom_max] = str(zoom_max)
+    outp = attr(media_index)
+    media_max = len(metadata)
+    media_marks = {}
+    media_marks[media_max] = str(media_max)
+    in_group_max = outp['in_group_max']
+    in_group_marks = {}
+    in_group_marks[in_group_max] = str(in_group_max)
+    group_max = len(groups)
+    group_marks = {}
+    group_marks[group_max] = str(group_max)
     return dict(
-        item=dict(
-            value=value,
-            max=len(metadata),
-            marks=marks,
+        media=dict(
+            index=outp['media_index'],
+            max=media_max,
+            marks=media_marks,
+        ),
+        in_group=dict(
+            index=outp['in_group_index'],
+            max=in_group_max,
+            marks=in_group_marks,
+        ),
+        group=dict(
+            index=outp['group_index'],
+            max=group_max,
+            marks=group_marks,
+        ),
+        control=dict(
+            disable_previous=outp['media_index'] == 1,
+            disable_next=outp['media_index'] == media_max,
+            disable_first_in_group=outp['in_group_index'] == 1,
+            disable_last_in_group=outp['in_group_index'] == in_group_max,
+            disable_previous_group=outp['group_index'] == 1,
+            disable_next_group=outp['group_index'] == group_max,
         ),
         info=dict(
             path=md['path'],
-            fileName=md['fileName'],
-            startTime=md['startTime'],
-            duration=md['duration'],
-        ),
-        control=dict(
-            disable_previous=(value == 1),
-            disable_next=(value == len(metadata)),
-            disable_first=(value == zoom_min),
-            disable_last=(value == zoom_max),
-        ),
-        zoom_item=dict(
-            value=value,
-            min=zoom_min,
-            max=zoom_max,
-            marks=zoom_marks,
+            file_name=md['fileName'],
+            start_time=datetime.fromisoformat(
+                md['startTime']).isoformat(sep=' ', timespec='seconds'),
+            duration=interval2str(md['duration']),
+            group_duration=interval2str(outp['group_duration']),
         ),
         cookie=cookie,
     )
@@ -321,17 +321,18 @@ def compute_output(context, md_dict):
 
 def groupMedias(metadata, interval):
     """  Group medias when end time /start time difference is smaller than interval (a number of seconds). metadata MUST be sorted by time ascending"""
+    # start_datetime and end_datetime properties are datetime objects
     delta = timedelta(seconds=interval)
     g = None
     groups = []
-    end_time = None
+    end_datetime = None
     for idx, md in enumerate(metadata):
-        start_time = datetime.fromisoformat(md['startTime'])
-        if end_time is None or end_time + delta < start_time:
-            g = dict(start=idx, end=idx, startTime=md['startTime'])
+        start_datetime = datetime.fromisoformat(md['startTime'])
+        if end_datetime is None or end_datetime + delta < start_datetime:
+            g = dict(start=idx, end=idx, start_datetime=start_datetime)
             groups.append(g)
-        end_time = start_time + timedelta(seconds=md['duration'])
-        g['endTime'] = end_time.isoformat()
+        end_datetime = start_datetime + timedelta(seconds=md['duration'])
+        g['end_datetime'] = end_datetime
         g['end'] = idx
     return groups
 
@@ -380,7 +381,7 @@ def update_media(media_context, interval, filter_context, selection_context):
 #     if group_start_time is not None:
 #         groups = groupMedia(media_metadata, interval)
 #         selected_group = next(
-#             (group for group in groups if group['startTime'] == group_start_time), None)
+#             (group for group in groups if group['start_time'] == group_start_time), None)
 #         full_media_options = [{'label': media['startTime'], 'value': media['path']}
 #                               for media in selected_group['metadata']]
 #     else:
