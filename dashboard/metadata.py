@@ -73,24 +73,6 @@ def buildMetadata(visit, site_id):
     return l
 
 
-def groupMedia(metadata, interval):
-    """  Group media when end time /start time difference is smaller than interval (a number of seconds). metadata MUST be sorted"""
-    delta = timedelta(seconds=interval)
-    g = None
-    groups = []
-    end_time = None
-    for media in metadata:
-        start_time = datetime.fromisoformat(media['startTime'])
-        if end_time is None or end_time + delta < start_time:
-            g = dict(metadata=[media], startTime=media['startTime'])
-            groups.append(g)
-        else:
-            g['metadata'].append(media)
-        end_time = start_time + timedelta(seconds=media['duration'])
-        g['endTime'] = end_time.isoformat()
-    return groups
-
-
 if __name__ == '__main__':
     root = Path('data')
     for site in (root / 'exif').iterdir():

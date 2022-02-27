@@ -5,7 +5,7 @@ from dash import dcc, html, Input, Output, State, callback_context, no_update
 from dash.exceptions import PreventUpdate
 from datetime import datetime, timedelta
 import json
-from metadata import listSites, getVisitMetadata, groupMedia
+from metadata import listSites, getVisitMetadata
 import selection
 import filter
 from functools import lru_cache

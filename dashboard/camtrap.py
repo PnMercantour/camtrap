@@ -12,7 +12,7 @@ from dataFinder import *
 import stats
 from classifierPanel import classifier_panel
 import metadata
-from metadata import listSites, listVisits, groupMedia
+from metadata import listSites, listVisits
 import selection
 from selection import t_selection_context
 import media
