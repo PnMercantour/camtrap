@@ -8,11 +8,9 @@ import json
 from pathlib import Path
 
 from pandas import options
-from dataFinder import *
+#from dataFinder import *
 import stats
-from classifierPanel import classifier_panel
-import metadata
-from metadata import listSites, listVisits
+import observation
 import selection
 from selection import t_selection_context
 import media
@@ -71,27 +69,22 @@ image_tab = dbc.Tab([
 )
 
 stats_tab = dbc.Tab(
+    html.H1("Bientôt des rapports d'exploitation des données de camtrap!"),
     tab_id='stats',
     label='Statistiques',
-    children=dbc.Card([
-        dbc.CardHeader('Statistiques du site'),
-        dbc.CardBody([
-            stats.table
-        ])
-    ])
+    # children=dbc.Card([
+    #     dbc.CardHeader('Statistiques du site'),
+    #     dbc.CardBody([
+    #         stats.table
+    #     ])
+    # ])
 )
 
 preferences_tab = dbc.Tab(
     tab_id='preferences',
     label='Préférences',
     children=[
-        dbc.Card([
-            dbc.CardHeader('Sélection'),
-            dbc.CardBody([
-                dbc.Switch(label='Regrouper les médias',
-                           value=True, id='prefs:group_media'),
-            ])
-        ]),
+
         dbc.Card([
             dbc.CardHeader('Serveur de vidéos'),
             dbc.CardBody([
@@ -100,7 +93,8 @@ preferences_tab = dbc.Tab(
                 dbc.Input(id='mediaserver:url',
                           value='http://localhost:8000/', type='text')
             ])
-        ])
+        ]),
+        observation.preferences,
     ]
 
 )
@@ -132,7 +126,7 @@ app.layout = dbc.Container([
             ], md=2),
             dbc.Col([tabs, info_string], md=6),
             dbc.Col([
-                classifier_panel,
+                observation.card,
                 media.card,
             ], md=4)
         ],
