@@ -29,8 +29,7 @@ project root: {project_root}
 video root:{video_root}
 data root:{data_root}
 {len(auth.users)} user accounts
-authentification: {auth.init(app)}
-""")
+authentification: {auth.init(app)}""")
 
 
 server = app.server
