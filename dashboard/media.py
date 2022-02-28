@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 import dash_bootstrap_components as dbc
 import dash
 from dash import dcc, html, Input, Output, State, callback_context, no_update
@@ -116,9 +115,9 @@ card = dbc.Card([
 
 output = dict(
     media=dict(
-        index=Output('media:index', 'value'),
-        max=Output('media:index', 'max'),
-        marks=Output('media:index', 'marks'),
+        index=Output(item_slider, 'value'),
+        max=Output(item_slider, 'max'),
+        marks=Output(item_slider, 'marks'),
     ),
     in_group=dict(
         index=Output('media:in_group_index', 'value'),
@@ -149,8 +148,8 @@ output = dict(
 )
 
 
-context = dict(
-    media_index=Input("media:index", "value"),
+local_context = dict(
+    media_index=Input(item_slider, "value"),
     in_group_index=Input('media:in_group_index', 'value'),
     group_index=Input('media:group_index', 'value'),
     control=dict(
@@ -350,7 +349,7 @@ def build_groups(interval, visit, site_id, filter_s):
         output,
     ],
     inputs=[
-        context,
+        local_context,
         interval,
         filter.context,
         selection.context,

@@ -1,52 +1,199 @@
-from dash import dcc, html, Input, Output, State, callback_context
+from sqlite3 import SQLITE_DROP_TEMP_INDEX
+from dash import dcc, html, Input, Output, State, callback_context, no_update
 from dash.exceptions import PreventUpdate
 import dash
 import dash_bootstrap_components as dbc
+import json
 from pathlib import Path
-from classifier import loadClassifier, dumpClassifier
+import media
+import selection
+import filter
+import observationData
 
+from numpy import False_
+from observationData import loadClassifier, dumpClassifier
 
-classifier_panel = dbc.Card([
-    dbc.CardHeader('Classifier'),
+group_mode = dbc.Switch(label='Appliquer au groupe',
+                        id='observation:group_mode', value=False)
+valid = dbc.Switch(label='Valider',
+                   id='observation:valid', value=False)
+notify = dbc.Switch(label='Signaler',
+                    id='observation:notify', value=False)
+copy = dbc.Button('Copier', id='observation:copy',
+                  title="Copier l'observation", disabled=True, size='sm', className="me-md-2")
+paste = dbc.Button('Coller', id='observation:paste',
+                   title="Coller l'observation mémorisée",  disabled=True, size='sm', className="me-md-2")
+commit = dbc.Button('Enregistrer',
+                    id='observation:commit', title='Enregistrer la saisie', size='sm', color='success')
+cancel = dbc.Button('Annuler', id='observation:cancel', title='Annuler la saisie en cours',
+                    size='sm', className="me-md-2")
+
+cookie = dcc.Store(id='observation:cookie', storage_type='local')
+
+prefer_group_media = dbc.Switch(label='Regrouper les médias',
+                                value=True, id='observation:prefer_group_media')
+preferences = dbc.Card([
+    dbc.CardHeader('Observation'),
+    dbc.CardBody([prefer_group_media,
+                  ])
+])
+
+species = dcc.Dropdown(
+    id='observation:attribute:species',
+    placeholder='Espèce',
+    clearable=True,
+    options=[
+        {'label': 'loup', 'value': 'loup'},
+        {'label': 'vache', 'value': 'vache'},
+    ]
+)
+
+population = dbc.Input(
+    id='observation:attribute:population',
+    placeholder="Nombre d'individus",
+    type='number',
+)
+
+comments = dbc.Input(
+    id="observation:attribute:comment",
+    placeholder="Commentaire...",
+    type="text")
+
+card = dbc.Card([
+    dbc.CardHeader('Observation'),
     dbc.CardBody([
-        dbc.Switch(label='Appliquer au groupe',
-                   id='classifier:group', value=True),
-        dbc.Switch(label='Donnée validée', id='classifier:valid', value=False),
+        group_mode,
+        valid, notify,
         dbc.Row([
             dbc.Col('Espèce', md=5, sm=12),
-            dbc.Col(dcc.Dropdown(
-                id="classifier:tag",
-                placeholder='Espèce',
-                clearable=True,
-                options=[
-                            {'label': 'loup', 'value': 'loup'},
-                            {'label': 'vache', 'value': 'vache'},
-                ]
-            ), md=7, sm=12),
+            dbc.Col(species, md=7, sm=12),
             dbc.Col('Population', md=5, sm=12),
-            dbc.Col(
-                dbc.Input(
-                    id="classifier:population",
-                    placeholder="Nombre d'individus",
-                    type="number"), md=7),
+            dbc.Col(population, md=7),
             dbc.Col('Notes', md=5, sm=12),
-            dbc.Col(
-                dbc.Input(
-                    id="classifier:comment",
-                    placeholder="Commentaire...",
-                    type="text"), md=7),
+            dbc.Col(comments, md=7),
         ]),
     ]),
     dbc.CardFooter([
-        dbc.Button('Supprimer', id='classifier:reset', title='Supprimer les annotations',
-                   size='sm', className="me-md-2"),
-        dbc.Button('Restaurer', id='classifier:abort', title='Annuler la saisie en cours',
-                   size='sm', className="me-md-2"),
-        dbc.Button('Enregistrer',
-                   id='classifier:commit', title='Enregistrer la saisie', size='sm', color='success'),
-        dcc.Store(id='classifier:store'),
+        copy, paste,
+        cancel, commit,
+        cookie,
     ]),
 ])
+
+
+def normalize_obs(media, visit, site_id):
+    "Normalize observation attributes"
+    obs = observationData.getObservation(media, visit, site_id)
+    attributes = obs['attributes']
+    return {
+        'user': obs.get('user'),
+        'attributes': {
+            'valid': attributes.get('valid'),
+            'notify': attributes.get('notify'),
+            'species': attributes.get('species'),
+            'population': attributes.get('population'),
+            'comments': attributes.get('comments'),
+        }
+    }
+
+
+@ dash.callback(
+    output=dict(
+        group_mode=Output(group_mode, 'value'),
+        attributes={
+            'valid': Output(valid, 'value'),
+            'notify': Output(notify, 'value'),
+            'species': Output(species, 'value'),
+            'population': Output(population, 'value'),
+            'comments': Output(comments, 'value'),
+        },
+        cookie=Output(cookie, 'data'),
+        disable_commit=Output(commit, "disabled"),
+        disable_cancel=Output(cancel, 'disabled'),
+    ),
+    inputs=dict(
+        group_mode=State(group_mode, 'value'),
+        attributes={
+            'valid': State(valid, 'value'),
+            'notify': State(notify, 'value'),
+            'species': State(species, 'value'),
+            'population': State(population, 'value'),
+            'comments': State(comments, 'value'),
+        },
+        cookie=State(cookie, 'data'),
+        context={
+            'selection': selection.context,
+            'filter': filter.context,
+            'interval': media.interval,
+            'media_index': Input('media:index', 'value'),
+            'group_index': State('media:group_index', 'value'),
+        },
+        preferences={
+            'prefer_group_media': State(prefer_group_media, 'value')
+        },
+        other={
+            'commit': Input(commit, 'n_clicks'),
+            'cancel': Input(cancel, 'n_clicks'),
+            'copy': Input(copy, 'n_clicks'),
+            'paste': Input(paste, 'n_clicks'),
+        }
+    ),
+)
+def update_observation(group_mode,  attributes, cookie, context, preferences, other):
+    media_index = context['media_index']
+    group_index = context['group_index']
+    visit = context['selection']['visit']
+    site_id = context['selection']['site_id']
+    md_dict = media.build_groups(
+        context['interval'], visit, site_id, json.dumps(context['filter']))
+    metadata = md_dict['metadata']
+    groups = md_dict['groups']
+    group_md = groups[group_index - 1]
+    medias = [md['fileName']
+              for md in metadata][group_md['start']:group_md['end'] + 1]
+    file_name = metadata[media_index - 1]['fileName']
+
+    def initialize():
+        obs = normalize_obs(file_name, visit, site_id)
+        group_obs = [normalize_obs(
+            media, visit, site_id) for media in medias]
+        attributes = obs['attributes']
+        group_mode_enabled = preferences['prefer_group_media'] and all([attributes == o['attributes']
+                                                                        for o in group_obs])
+        return ({
+            'attributes': attributes,
+            'group_mode': group_mode_enabled,
+            'cookie': {'attributes': attributes, 'group_mode': group_mode},
+            'disable_commit': False,
+            'disable_cancel': False,
+        })
+
+    triggers = [trigger['prop_id']
+                for trigger in callback_context.triggered]
+    if 'observation' in triggers[0]:
+        action = triggers[0].split(':')[1].split('.')[0]
+        if action == 'cancel':
+            print('cancel')
+            return(initialize())
+        if action == 'commit':
+            if group_mode:
+                print('group mode commit')
+                for file_name in medias:
+                    observationData.putObservation({
+                        'user': 'foo',
+                        'attributes': attributes,
+                    },
+                        file_name, visit, site_id)
+            else:
+                print('single commit')
+                observationData.putObservation({
+                    'user': 'foo',
+                    'attributes': attributes,
+                },
+                    file_name, visit, site_id)
+            return(initialize())
+    print(triggers)
+    return initialize()
 
 
 # @ dash.callback(

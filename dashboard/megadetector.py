@@ -6,7 +6,6 @@ import json
 
 with (config.project_root / "config" / "megadetector.json").open("r") as f:
     categories = json.load(f)
-print(categories)
 
 panel = [
     dbc.Label('Inclure:'),

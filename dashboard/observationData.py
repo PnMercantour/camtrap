@@ -5,6 +5,28 @@ from dataFinder import *
 import time
 
 
+def getObservation(media, visit, site_id):
+    # TODO add timestamp to observation filename
+    path = data_root/'observations'/str(site_id)/visit
+    path.mkdir(parents=True, exist_ok=True)
+    try:
+        with (path/(media + '.json')).open('r') as f:
+            obs = json.load(f)
+            return obs
+    except:
+        return {'attributes': {}}
+
+
+def putObservation(obs, media, visit, site_id):
+    path = data_root/'observations'/str(site_id)/visit
+    path.mkdir(parents=True, exist_ok=True)
+    try:
+        with (path/(media + '.json')).open('w') as f:
+            json.dump(obs, f)
+    except:
+        print('Error:writeObservation', path, media, obs)
+
+
 def loadClassifier(site_id, visit, media):
     "loads media classification from file. Creates file if needed"
     path = data_root/'classification'/'media' / \
