@@ -10,7 +10,6 @@ import selection
 import filter
 import observationData
 
-from numpy import False_
 from observationData import loadClassifier, dumpClassifier
 
 group_mode = dbc.Switch(label='Appliquer au groupe',
