@@ -52,7 +52,9 @@ group_interval = dcc.Dropdown(
         {'label': '10mn', 'value': 600},
         {'label': '30mn', 'value': 1800},
         {'label': '1h', 'value': 3600},
-        {'label': '3h', 'value': 10800}
+        {'label': '3h', 'value': 10800},
+        {'label': '1 jour', 'value': 86400},
+        {'label': '1 mois', 'value': 2592000},
     ],
 )
 

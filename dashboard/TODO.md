@@ -42,8 +42,12 @@ Seuil de détection : essayer input, étendre la précision
 # Media
 
 slider pour voir la position du media dans la visite (1 à nbre de medias, valeur courante) encadré par boutons previous /next
+
 slider pour voir la position du media dans le groupe (1 à nbre de medias). encadré par boutons first/last
+
 Groupe : slider pour voir la position du groupe dans la visite (1 à nbre de groupes) encadré par boutons groupe précédent, groupe suivant
+
+TODO ajouter intervalle 1 jour, 1 mois, pour permettre des saisies en bloc (media vides, etc ...)
 
 # Observation
 

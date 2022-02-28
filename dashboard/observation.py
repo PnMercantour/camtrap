@@ -1,4 +1,4 @@
-from sqlite3 import SQLITE_DROP_TEMP_INDEX
+import config
 from dash import dcc, html, Input, Output, State, callback_context, no_update
 from dash.exceptions import PreventUpdate
 import dash
@@ -10,14 +10,14 @@ import selection
 import filter
 import observationData
 
-from observationData import loadClassifier, dumpClassifier
-
 group_mode = dbc.Switch(label='Appliquer au groupe',
                         id='observation:group_mode', value=False)
 valid = dbc.Switch(label='Valider',
                    id='observation:valid', value=False)
 notify = dbc.Switch(label='Signaler',
                     id='observation:notify', value=False)
+multispecies = dbc.Switch(label='Plusieurs espèces',
+                          id='observation:multispecies', value=False)
 copy = dbc.Button('Copier', id='observation:copy',
                   title="Copier l'observation", disabled=True, size='sm', className="me-md-2")
 paste = dbc.Button('Coller', id='observation:paste',
@@ -37,14 +37,24 @@ preferences = dbc.Card([
                   ])
 ])
 
+with (config.project_root/"config"/"species.json").open() as f:
+    species_options = json.load(f)
+
+with (config.project_root/"config"/"domestic.json").open() as f:
+    domestic_options = json.load(f)
+
 species = dcc.Dropdown(
     id='observation:attribute:species',
-    placeholder='Espèce',
+    placeholder='Espèce sauvage',
     clearable=True,
-    options=[
-        {'label': 'loup', 'value': 'loup'},
-        {'label': 'vache', 'value': 'vache'},
-    ]
+    options=species_options,
+)
+
+domestic = dcc.Dropdown(
+    id='observation:attribute:domestic',
+    placeholder='Espèce domestique',
+    clearable=True,
+    options=domestic_options,
 )
 
 population = dbc.Input(
@@ -63,9 +73,12 @@ card = dbc.Card([
     dbc.CardBody([
         group_mode,
         valid, notify,
+        multispecies,
         dbc.Row([
-            dbc.Col('Espèce', md=5, sm=12),
+            dbc.Col('Faune sauvage', md=5, sm=12),
             dbc.Col(species, md=7, sm=12),
+            dbc.Col('Faune domestique', md=5, sm=12),
+            dbc.Col(domestic, md=7, sm=12),
             dbc.Col('Population', md=5, sm=12),
             dbc.Col(population, md=7),
             dbc.Col('Notes', md=5, sm=12),
@@ -89,7 +102,9 @@ def normalize_obs(media, visit, site_id):
         'attributes': {
             'valid': attributes.get('valid'),
             'notify': attributes.get('notify'),
+            'multispecies': attributes.get('multispecies'),
             'species': attributes.get('species'),
+            'domestic': attributes.get('domestic'),
             'population': attributes.get('population'),
             'comments': attributes.get('comments'),
         }
@@ -102,7 +117,9 @@ def normalize_obs(media, visit, site_id):
         attributes={
             'valid': Output(valid, 'value'),
             'notify': Output(notify, 'value'),
+            'multispecies': Output(multispecies, 'value'),
             'species': Output(species, 'value'),
+            'domestic': Output(domestic, 'value'),
             'population': Output(population, 'value'),
             'comments': Output(comments, 'value'),
         },
@@ -115,7 +132,9 @@ def normalize_obs(media, visit, site_id):
         attributes={
             'valid': State(valid, 'value'),
             'notify': State(notify, 'value'),
+            'multispecies': State(multispecies, 'value'),
             'species': State(species, 'value'),
+            'domestic': State(domestic, 'value'),
             'population': State(population, 'value'),
             'comments': State(comments, 'value'),
         },

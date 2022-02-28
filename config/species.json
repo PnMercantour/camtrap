@@ -1,0 +1,18 @@
+[
+    {"label": "Loup", "value": "loup"},
+    {"label": "Renard", "value": "renard"},
+    {"label":"Chamois", "value": "chamois"},
+    {"label": "Bouquetin", "value": "bouquetin"},
+    {"label": "Blaireau", "value": "blaireau"},
+    {"label": "Sanglier", "value": "sanglier"},
+    {"label": "Chevreuil", "value": "chevreuil"},
+    {"label": "Cerf", "value": "cerf"},
+    {"label": "Marmotte", "value": "marmotte"},
+    {"label": "Martre/Fouine", "value": "fouine"},
+    {"label": "Lièvre", "value": "lièvre"},
+    {"label": "Lièvre d'Europe", "value": "lièvre d'Europe"},
+    {"label": "Lièvre variable", "value": "lièvre variable"},
+    {"label": "Oiseaux", "value": "oiseaux"},
+    {"label": "Micromammifère", "value": "micromammifère"},
+    {"label": "Autre espèce", "value": "unlisted"}
+]

@@ -55,7 +55,6 @@ python <...>/microsoft/cameratraps/detection/process_video.py --debug_max_frames
 
 ## Scripts PNM
 
-
 ## videoMetadata
 
 Enregistre les métadonnées des fichiers source vidéo
@@ -117,10 +116,12 @@ optional arguments:
 python bin/videoDetect2Json.py -p 30 -l 240 -r /mnt/f/ "/mnt/f/Maille 6"
 
 ```
+
 # dump d'une image
+
 Le dump est une option de videoDetect2Json
 
-python bin/videoDetect2Json.py -p 30 -l 240 -d -r /home/vprunet/Vidéos /home/vprunet/Vidéos/Maille\ 6/2020-05-14/IMG_0095.MP4 
+python bin/videoDetect2Json.py -p 30 -l 240 -d -r /home/vprunet/Vidéos /home/vprunet/Vidéos/Maille\ 6/2020-05-14/IMG_0095.MP4
 
 ## annotate_image
 
@@ -131,6 +132,7 @@ TODO : normaliser les arguments et construire à la volée les images sources.
 python bin/annotate_image.py --help
 python bin/annotate_image.py -i data/frames data/detection/.../report.json output_directory
 ```
+
 python bin/annotate_image.py -i data/frames data/detection/frames/Maille\ 6/2020-05-14/IMG_0095.MP4-0.json foo
 
 python bin/annotate_image.py -i data/frames data/detection/frames/Maille\ 6/2020-05-14/IMG_0095.MP4-240.json foo
@@ -183,28 +185,34 @@ Utiliser l'option --dump pour générer des images correspondant aux trames sél
 python bin/videoDetect2Json.py --dump data/video/test/IMG_0006.MP4
 python bin/annotate_image.py  -i data/frames/test data/detection/frames/test/IMG_0006.MP4-1814.json data/annotated_frames/test
 ```
+
 # Dashboard
+
 ```
-pip install dash
+pip install dash, dash-auth
 pip install pandas
 pip install -U scikit-image
 pip install python-dotenv
 pip install dash-bootstrap-components
 python bin/dashboard.py
 ```
+
 Enregistrer les préférences (CAMTRAP_VIDEO, ...) dans .env à la racine du projet.
 
 Préparer les résumés d'analyse avec visitDigest
-python dashboard/visitDigest.py 
+python dashboard/visitDigest.py
 
 Lancer le serveur dash
 python dashboard/camtrap.py
 
 # Divers
+
 video player
 https://community.plotly.com/t/how-to-use-html-video/37529
 https://community.plotly.com/t/adding-video-player/5303
+
 ```
 ln -s <video_root_dir> data/video
 ```
+
 permet d'accéder aux vidéos avec la valeur par défaut de l'option root.
