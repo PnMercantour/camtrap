@@ -53,7 +53,7 @@ def filter(metadata, context, visit, site_id):
         return metadata
 
 
-@lru_cache
+@lru_cache(maxsize=64)
 def filterMetadata(visit, site_id, filter_s):
     context = json.loads(filter_s)
     print(context)
