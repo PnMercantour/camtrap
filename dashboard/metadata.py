@@ -13,7 +13,7 @@ def listSites():
         try:
             l.append(int(site.name))
         except:
-            print(f'waning:listSites:invalid site id: {site}: ignored')
+            print(f'warning:listSites:invalid site id: {site}: ignored')
     l.sort()
     return l
 
@@ -41,7 +41,7 @@ def getVisitMetadata(visit, site_id):
         return md
 
 
-@lru_cache  # for improved memory usage (not for performance)
+@lru_cache(maxsize=64)
 def getVisitMetadataFromCache(visit, site_id):
     return getVisitMetadata(visit, site_id)
 

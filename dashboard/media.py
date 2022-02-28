@@ -336,7 +336,7 @@ def groupMedias(metadata, interval):
     return groups
 
 
-@ lru_cache
+@ lru_cache(maxsize=64)
 def build_groups(interval, visit, site_id, filter_s):
     # result from filterMetadata is shared among all values of group_context
     md_dict = filter.filterMetadata(visit, site_id, filter_s)
