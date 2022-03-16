@@ -57,6 +57,9 @@ def buildMetadata(visit, site_id):
             continue
         with p.open('r') as f:
             md = json.load(f)[0]
+            if md.get('ExifTool:Error') is not None:
+                print(p, 'ignored:', md['ExifTool:Error'])
+                continue
             l.append(dict(
                 fileName=md['File:FileName'],
                 path=md["SourceFile"],
@@ -73,14 +76,13 @@ def buildMetadata(visit, site_id):
 
 
 if __name__ == '__main__':
-    root = Path('data')
-    for site in (root / 'exif').iterdir():
+    for site in (data_root / 'exif').iterdir():
         split = site.name.split(' ')
         if split[0] == 'Maille':
-            site_id = split[1]
+            site_id = int(split[1])
             for visit in site.iterdir():
                 try:
                     date.fromisoformat(visit.name)
-                    buildMetadata(visit.name, site_id, root)
+                    buildMetadata(visit.name, site_id)
                 except:
                     print(f'warning:invalid repository: {visit}: ignored')

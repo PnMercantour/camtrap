@@ -49,6 +49,10 @@ Groupe : slider pour voir la position du groupe dans la visite (1 à nbre de gro
 
 TODO ajouter intervalle 1 jour, 1 mois, pour permettre des saisies en bloc (media vides, etc ...)
 
+Recalage sur la vidéo la plus proche :
+
+- si humain sur dernière vidéo sans filtre, l'introduction du filtre recale sur la première vidéo car il n'y a pas de vidéo suivante. Corriger et caler sur la vidéo précédente.
+
 # Observation
 
 La carte observation contient les données d'observation saisies par un agent.
@@ -128,6 +132,63 @@ Conservation des vidéos vides :
 intérêt historique (végétation, manteau neigeux, ...)
 Voir avec Jérome.
 
+# Activer https sur le serveur origin
+
+Camtrap permet de lire les médias depuis une autre source que l'origine (http(s)://camtrap.mercantour-parcnational.fr), dès lors qu'un serveur http de médias est configuré sur la machine cliente (localhost) ou sur un serveur local (sur le lan). Cette fonctionnalité de camtrap est essentielle, en effet:
+
+- le serveur applicatif est hébergé dans le cloud, et n'a pas la capacité de stocker et de servir plusieurs To de données vidéo. L'utilisation de serveurs spécialisés n'est pas une option viable à l'heure actuelle pour des raisons de coût et de difficulté à pousser les médias dans le cloud (voir le point suivant)
+- les clients de l'application disposent d'une bande passante limitée (type adsl) en lecture (download) et plus encore en écriture (upload), le chargement d'une vidéo de 30s (90Mo) serait rédhibitoire pour l'interactivité et la rapidité de traitement. Pousser les médias dans le cloud (voir point précédent) est inenvisageable.
+
+Le bon fonctionnement de cette option de camtrap
+On ne peut activer https sur le serveur origine que si on sait comment autoriser le chargement des vidéos depuis un site non https (localhost ou un serveur sur le lan) ou qu'on active également https pour le serveur lan.
+
+## mixed content
+
+Lorsque le site principal est https et que le serveur de médias est http, on parle de mixed content.
+
+https://w3c.github.io/webappsec-mixed-content/
+https://developer.mozilla.org/en-US/docs/Web/Security/Mixed_content
+
+https://support.mozilla.org/en-US/kb/mixed-content-blocking-firefox
+
+## https sur le lan
+
+On peut activer https sur un serveur lan, sous réserve que l'on configure correctement le navigateur qui va l'interroger.
+
+https://www.techrepublic.com/article/how-to-add-a-trusted-certificate-authority-certificate-to-chrome-and-firefox/
+
+accéder aux vidéos sur un serveur local.
+
+Le serveur doit respecter les nouvelles spécifications du CORS ou le navigateur doit être paramétré pour ignorer ces spécifications.
+
+chrome://flags/#block-insecure-private-network-requests
+
+https://stackoverflow.com/questions/66534759/chrome-cors-error-on-request-to-localhost-dev-server-from-remote-site
+
+https://developer.chrome.com/blog/private-network-access-update/
+
+https://developer.chrome.com/blog/private-network-access-preflight/
+
+https://mozilla.github.io/standards-positions/#cors-and-rfc1918
+https://gist.github.com/acdha/925e9ffc3d74ad59c3ea
+
+https://developer.mozilla.org/fr/docs/Web/HTTP/Methods/OPTIONS
+
+Firefox linux
+
+décodage logiciel
+https://askubuntu.com/questions/1274143/firefox-not-playing-videos-on-ubuntu-20-04-4-lts
+
+Installer une lib pour décoder les media mp4
+
+```
+sudo apt install ffmpeg
+``̀̀̀
+
+Le décodage matériel des vidéos nécessite une configuration supplémentaire:
+https://discourse.ubuntu.com/t/enabling-accelerated-video-decoding-in-firefox-on-ubuntu-21-04/22081
+
+
 Architecture
 
 Sélection : gestion des paramètres site (site_id: number) et visite (visit: ISO date string).
@@ -147,3 +208,21 @@ Optimisé pour fonctionner avec une connexion internet peu performante (du type 
 
 - les media peuvent être accédés localement sur le site client plutôt que téléchargés depuis un serveur distant.
 - les callback dash sont optimisées pour limiter le volume de données dans le sens client -> serveur. En conséquence, le résultat des requêtes est caché sur le serveur, et le client ne transmet que les informations nécessaires pour faire la requête (et profiter du cache de mémoïsation).
+```
+
+Application cliente
+
+camtrap est une application web, qui peut être utilisée depuis un navigateur web. Cette architecture garantit:
+
+- que tous les utilisateurs utilisent la même version de l'application
+- que les données sont gérées de façon centralisée et que la base de données est protégée contre les accès directs depuis un client
+- que les utilisateurs sont authentifiés et autorisés à accéder à l'application.
+
+de façon optionnelle, une extension peut être installée sur ou à proximité de l'ordinateur client pour fournir un accès rapide aux médias.
+
+L'extension propose les fonctionnalités suivantes:
+
+- serveur de médias
+- serveur d'images extraites d'un média
+- check media (compare la liste des médias sur le serveur local à la base de données centrale). Check media peut être utilisé pour filtrer l'affichage des données disponibles sur le serveur courant.
+- mise à jour des données médias (effacement de médias sans intérêt, redimensionnement)

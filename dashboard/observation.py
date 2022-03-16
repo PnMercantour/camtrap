@@ -92,6 +92,17 @@ card = dbc.Card([
     ]),
 ])
 
+dummy_attributes = {
+    'valid': False,
+    'notify': False,
+    'multispecies': False,
+    'species': None,
+    'domestic': None,
+    'population': None,
+    'comments': None,
+
+}
+
 
 def normalize_obs(media, visit, site_id):
     "Normalize observation attributes"
@@ -159,6 +170,14 @@ def normalize_obs(media, visit, site_id):
 )
 def update_observation(group_mode,  attributes, cookie, context, preferences, other):
     media_index = context['media_index']
+    if media_index is None:
+        return({
+            'attributes': dummy_attributes,
+            'group_mode': False,
+            'cookie': {'attributes': dummy_attributes, 'group_mode': False},
+            'disable_commit': True,
+            'disable_cancel': True
+        })
     group_index = context['group_index']
     visit = context['selection']['visit']
     site_id = context['selection']['site_id']

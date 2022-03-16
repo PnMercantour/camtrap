@@ -186,21 +186,66 @@ python bin/videoDetect2Json.py --dump data/video/test/IMG_0006.MP4
 python bin/annotate_image.py  -i data/frames/test data/detection/frames/test/IMG_0006.MP4-1814.json data/annotated_frames/test
 ```
 
+# Exiftool
+
+Monter le disque de médias et extraire les métadonnées brutes avec exiftool.
+
+```
+cd media_root_directory
+exiftool -fast -json -groupNames --printConv --composite -ext mp4 -textOut "/home/vprunet/src/PNM/camtrap/data/exif/%d%F.json" -recurse Maille\ *
+```
+
+Attention, les fichiers json déjà présents ne sont pas recalculés. S'ils sont corrompus, ils doivent être supprimés avant d'exécuter exiftool.
+
+Un fichier est produit pour chaque média.
+
+# Metadata
+
+Les métadonnées sont calculées à partir des données exif.
+Exécuter
+
+`python bin/metadata.py`
+
+pour construire les fichiers de métadonnées (qui seront déposés dans le répertoire data/metadata)
+
+Un fichier est construit pour chaque visite.
+Les fichiers calculés écrasent les fichiers préexistants.
+Effacer à la main (ou au préalable) les fichiers correspondant à des visites supprimées ou renommées.
+
+# Megadetector
+
+python /home/vprunet/src/PNM/camtrap/bin/runMegadetector.py -r /media/vprunet/INTENSO/ -p 300 -c "[0, 30, 60, 90, 120, 180, 240, 300, 600, 900, 1200]" /media/vprunet/INTENSO/
+
+exécute Megadetector sur les médias en argument.
+
+Actuellement, l'algorithme n'utilise pas les métadonnées (cela pourrait changer, par exemple pour grouper les médias avant d'exécuter Megadetector).
+
+Un fichier est produit pour chaque image traitée.
+
+Les fichiers sont écrits dans le répertoire data/detection/frames
+
+# Megadetector Data
+
+python dashboard/megadetectorData.py
+
+reconstruit la synthèse de megadetector pour chaque media source.
+
+Les fichiers sont écrits dans le répertoire data/detection/megadetector
+
 # Dashboard
 
 ```
+
 pip install dash, dash-auth
 pip install pandas
 pip install -U scikit-image
 pip install python-dotenv
 pip install dash-bootstrap-components
 python bin/dashboard.py
+
 ```
 
 Enregistrer les préférences (CAMTRAP_VIDEO, ...) dans .env à la racine du projet.
-
-Préparer les résumés d'analyse avec visitDigest
-python dashboard/visitDigest.py
 
 Lancer le serveur dash
 python dashboard/camtrap.py
@@ -212,7 +257,13 @@ https://community.plotly.com/t/how-to-use-html-video/37529
 https://community.plotly.com/t/adding-video-player/5303
 
 ```
+
 ln -s <video_root_dir> data/video
+
 ```
 
 permet d'accéder aux vidéos avec la valeur par défaut de l'option root.
+
+```
+
+```
