@@ -34,3 +34,28 @@ exiftool -fast -json -groupNames --printConv --composite -ext mp4 -textOut "/hom
 python dashboard/metadata.py
 
 python dashboard/megadetectorData.py
+
+Elimination de medias sans contenu.
+On utilise falseDetection.py, seuil nul, complété par une lecture de contrôle sur les médias incriminés (avec un seuil variable)
+Puis déplacement du média sur le disque ssd de cgpia, avant suppression définitive
+
+118/2021-04-03
+~/src/PNM/camtrap/rejected/118/2021-04-03$ cp -a /media/vprunet/INTENSO1/Maille\ 118/2021-04-03/\* .
+
+118/2021-03-03
+toutes sauf 63 299 371 527
+
+85/2021-04-03
+toutes sauf 26, 27, 55, 56, 173, 196, 197, 538, 567,
+
+85/2020-03-14
+toutes sauf 74-81 , 226-227, 329, 378-394, 455, 607, 608, 655, 679-684,
+
+119/2020-05-16
+toutes sauf
+2, 26, 49, 50, 51, 64, 84, 85, 127, 169, 217, 240, 241, 254, 273, 294, 327, 351, 404, 405, 406, 432, 433, 443, 459,
+460, 484, 490, 491, 506, 532, 533, 561, 590, 591, 592, 593, 594, 605, 633, 634, 663, 695, 725, 726, 727, 778, 801,
+848, 869, 932, 953, 975, 1001, 1018, 1041, 1055, 1079, 1098, 1099, 1132, 1141, 1153, 1154, 1155, 1182, 1183, 1184, 1185, 1186-1191, 1200, 1201
+
+823, 824, 826, 1133, 1134, 1136, 1137, 1139 à 98%, pourtant elle est vide.
+65 a un loup.
