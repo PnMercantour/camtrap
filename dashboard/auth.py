@@ -48,3 +48,11 @@ def set_user_name(any):
         return flask.request.authorization['username']
     else:
         return default_user
+
+
+def trusted_user():
+    "to be called within a callback environment"
+    if auth == 'BasicAuth':
+        return flask.request.authorization['username']
+    else:
+        return default_user

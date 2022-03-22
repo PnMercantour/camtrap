@@ -1,4 +1,5 @@
 import config
+import auth
 from dash import dcc, html, Input, Output, State, callback_context, no_update
 from dash.exceptions import PreventUpdate
 import dash
@@ -210,26 +211,22 @@ def update_observation(group_mode,  attributes, cookie, context, preferences, ot
     if 'observation' in triggers[0]:
         action = triggers[0].split(':')[1].split('.')[0]
         if action == 'cancel':
-            print('cancel')
             return(initialize())
         if action == 'commit':
             if group_mode:
-                print('group mode commit')
                 for file_name in medias:
                     observationData.putObservation({
-                        'user': 'foo',
+                        'user': auth.trusted_user(),
                         'attributes': attributes,
                     },
                         file_name, visit, site_id)
             else:
-                print('single commit')
                 observationData.putObservation({
-                    'user': 'foo',
+                    'user': auth.trusted_user(),
                     'attributes': attributes,
                 },
                     file_name, visit, site_id)
             return(initialize())
-    print(triggers)
     return initialize()
 
 
