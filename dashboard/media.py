@@ -28,7 +28,7 @@ last_in_group_button = dbc.Button(html.I(className="fas fa-solid fa-forward"),
                                   id='media:last_in_group', title='Dernier média du groupe')
 
 in_group_slider = dcc.Slider(id="media:in_group_index", min=1, max=100, step=1, included=False, marks=None, tooltip={
-    'placement': 'bottom', 'always_visible': True},)
+    'placement': 'bottom', 'always_visible': False},)
 
 prev_group_button = dbc.Button(html.I(className="fas fa-solid fa-fast-backward"),
                                id='media:previous_group', title='Dernier média du groupe précédent')
@@ -91,8 +91,9 @@ card = dbc.Card([
             dbc.Col([prev_button, next_button], width=3),
             dbc.Col(item_slider, width=9),
         ]),
+        # html.Hr(),
         dbc.Row([
-            dbc.Col("Groupe", width=3),
+            dbc.Col("Médias du groupe", width=3),
             dbc.Tooltip("Durée du groupe de médias",
                         target='media:group_duration'),
             dbc.Col(id='media:group_duration'),
@@ -228,7 +229,7 @@ def compute_output(context, md_dict):
     triggers = [trigger['prop_id'] for trigger in callback_context.triggered]
     media_triggers = [trigger for trigger in triggers if 'media:' in trigger]
     if len(media_triggers) > 0:
-        print(media_triggers)
+        # print(media_triggers)
         trigger = media_triggers[0]
         # we don't expect multiple triggers. Process the first one
         if trigger == 'media:index.value':

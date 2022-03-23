@@ -33,7 +33,7 @@ def init(app):
     return auth
 
 
-component = html.H2(id="auth:user_name")
+component = html.H5(id="auth:user_name")
 
 default_user = 'PNM'
 

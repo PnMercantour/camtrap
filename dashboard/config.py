@@ -12,3 +12,9 @@ data_root = project_root / getenv('CAMTRAP_DATA')
 
 video_root = project_root / getenv('CAMTRAP_VIDEO')
 "Location of raw video files"
+
+with (project_root/"config"/"species.json").open() as f:
+    species_options = json.load(f)
+
+with (project_root/"config"/"domestic.json").open() as f:
+    domestic_options = json.load(f)

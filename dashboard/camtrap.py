@@ -147,7 +147,6 @@ def update_video_player(media_path, custom, url):
     if media_path is not None:
         if custom:
             path = url + str(media_path)
-            print(path)
             return [path, False]
         else:
             return [(str(Path('/video') / media_path)), False]

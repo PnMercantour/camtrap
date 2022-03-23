@@ -24,11 +24,17 @@ Intérêt : le filtrage serait appliqué à toutes les visites du site.
 
 # Filtre
 
+ajouter un bouton rafraichir (pour recalculer le filtre statut d'obs)
 ajouter un filtre date
 
-ajouter un filtre observation
+ajouter un filtre statut d'observation
+False : tous les média
+True : ouvre le panneau de filtrage
 
-- média non annoté
+Options proposées (exclusives, pour commencer):
+
+- média non annoté ou annoté (dans ce cas, ouvre un sous menu)
+
 - espèce
 - statut de l'obs (validée, non validée)
 - observation signalée

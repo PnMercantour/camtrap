@@ -11,6 +11,8 @@ import selection
 import filter
 import observationData
 
+digitizer_info = html.Div('vide', id='observation:digitizer')
+
 group_mode = dbc.Switch(label='Appliquer au groupe',
                         id='observation:group_mode', value=False)
 valid = dbc.Switch(label='Valider',
@@ -38,24 +40,19 @@ preferences = dbc.Card([
                   ])
 ])
 
-with (config.project_root/"config"/"species.json").open() as f:
-    species_options = json.load(f)
-
-with (config.project_root/"config"/"domestic.json").open() as f:
-    domestic_options = json.load(f)
 
 species = dcc.Dropdown(
     id='observation:attribute:species',
     placeholder='Espèce sauvage',
     clearable=True,
-    options=species_options,
+    options=config.species_options,
 )
 
 domestic = dcc.Dropdown(
     id='observation:attribute:domestic',
     placeholder='Espèce domestique',
     clearable=True,
-    options=domestic_options,
+    options=config.domestic_options,
 )
 
 population = dbc.Input(
@@ -70,7 +67,10 @@ comments = dbc.Input(
     type="text")
 
 card = dbc.Card([
-    dbc.CardHeader('Observation'),
+    dbc.CardHeader(dbc.Row([
+        dbc.Col('Observation', md=5, sm=12),
+        dbc.Col(digitizer_info, md=7, sm=12),
+    ])),
     dbc.CardBody([
         group_mode,
         valid, notify,
@@ -125,6 +125,7 @@ def normalize_obs(media, visit, site_id):
 
 @ dash.callback(
     output=dict(
+        digitizer_info=Output(digitizer_info, 'children'),
         group_mode=Output(group_mode, 'value'),
         attributes={
             'valid': Output(valid, 'value'),
@@ -174,6 +175,7 @@ def update_observation(group_mode,  attributes, cookie, context, preferences, ot
     if media_index is None:
         return({
             'attributes': dummy_attributes,
+            'digitizer_info': 'Aucun média',
             'group_mode': False,
             'cookie': {'attributes': dummy_attributes, 'group_mode': False},
             'disable_commit': True,
@@ -199,6 +201,7 @@ def update_observation(group_mode,  attributes, cookie, context, preferences, ot
         group_mode_enabled = preferences['prefer_group_media'] and all([attributes == o['attributes']
                                                                         for o in group_obs])
         return ({
+            'digitizer_info': obs['user'],
             'attributes': attributes,
             'group_mode': group_mode_enabled,
             'cookie': {'attributes': attributes, 'group_mode': group_mode},
@@ -228,77 +231,3 @@ def update_observation(group_mode,  attributes, cookie, context, preferences, ot
                     file_name, visit, site_id)
             return(initialize())
     return initialize()
-
-
-# @ dash.callback(
-#     Output('classifier:valid', 'value'),
-#     Output('classifier:tag', 'value'),
-#     Output('classifier:population', 'value'),
-#     Output('classifier:comment', 'value'),
-#     Output('classifier:store', 'data'),
-#     Input('select:media', 'value'),
-#     State('select:visit', 'value'),
-#     State('select:site', 'value'),
-#     State('classifier:valid', 'value'),
-#     State('classifier:tag', 'value'),
-#     State('classifier:population', "value"),
-#     State('classifier:comment', 'value'),
-#     Input('classifier:group', 'value'),
-#     Input('classifier:reset', 'n_clicks'),
-#     Input('classifier:abort', 'n_clicks'),
-#     Input('classifier:commit', 'n_clicks'),
-#     State('classifier:store', 'data'),
-# )
-# def classifier_logic(media, visit, site_id, valid, tag, population, comment, group, delete, abort, commit, store):
-#     print(store)
-#     changed_id = [p['prop_id'] for p in callback_context.triggered][0]
-#     if group:
-#         if changed_id in ['classifier:group.value', 'select:media.value', 'classifier:abort.n_clicks']:
-#             print('load group properties and compare')
-#             raise PreventUpdate
-#         if changed_id in ['classifier:reset.n_clicks']:
-#             print('reset group properties')
-#             raise PreventUpdate
-#         if changed_id in ['classifier:commit.n_clicks']:
-#             print('commit group edition')
-#             raise PreventUpdate
-#         else:
-#             print('unhandled changed_id while in group mode', changed_id)
-#             return [
-#                 valid,
-#                 tag,
-#                 population,
-#                 comment,
-#                 store,
-#             ]
-#     else:
-#         if changed_id in ['classifier:group.value', 'select:media.value', 'classifier:abort.n_clicks']:
-#             print('load media properties')
-#             classifier = loadClassifier(
-#                 site_id, visit, Path(media).name)
-#             return[
-#                 classifier.get('valid'),
-#                 classifier.get('tag'),
-#                 classifier.get('population'),
-#                 classifier.get('comment'),
-#                 classifier,
-#             ]
-#         if changed_id == 'classifier:reset.n_clicks':
-#             print('reset media properties')
-#             raise PreventUpdate
-#         if changed_id == 'classifier:commit.n_clicks':
-#             print('commit media properties')
-#             store['tag'] = tag
-#             store['population'] = population
-#             store['comment'] = comment
-#             store['valid'] = valid
-#             success = dumpClassifier(
-#                 store, site_id, visit, Path(media).name)
-#             store['serial'] = store['serial'] + 1  # hack
-#             return [
-#                 valid,
-#                 tag,
-#                 population,
-#                 comment,
-#                 store
-#             ]
