@@ -148,8 +148,12 @@ def update_video_player(media_path, custom, url):
         if custom:
             path = url + str(media_path)
             return [path, False]
-        else:
+        elif (video_root/'video'/media_path).exists():
             return [(str(Path('/video') / media_path)), False]
+        else:
+            return [None, True]
+        # else:
+        #     return [(str(Path('/video') / media_path)), False]
     else:
         return [None, True]
 
