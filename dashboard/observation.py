@@ -123,10 +123,21 @@ def normalize_obs(media, visit, site_id):
     }
 
 
+def info_string(size):
+    s = 'Appliquer au groupe'
+    if size is None:
+        return s
+    elif size == 1:
+        return s + ' (sans objet)'
+    else:
+        return s + f' ({size} médias)'
+
+
 @ dash.callback(
     output=dict(
         digitizer_info=Output(digitizer_info, 'children'),
         group_mode=Output(group_mode, 'value'),
+        group_info=Output(group_mode, 'label'),
         attributes={
             'valid': Output(valid, 'value'),
             'notify': Output(notify, 'value'),
@@ -177,6 +188,7 @@ def update_observation(group_mode,  attributes, cookie, context, preferences, ot
             'attributes': dummy_attributes,
             'digitizer_info': 'Aucun média',
             'group_mode': False,
+            'group_info': None,
             'cookie': {'attributes': dummy_attributes, 'group_mode': False},
             'disable_commit': True,
             'disable_cancel': True
@@ -204,6 +216,7 @@ def update_observation(group_mode,  attributes, cookie, context, preferences, ot
             'digitizer_info': obs['user'],
             'attributes': attributes,
             'group_mode': group_mode_enabled,
+            'group_info': info_string(len(group_obs)),
             'cookie': {'attributes': attributes, 'group_mode': group_mode},
             'disable_commit': False,
             'disable_cancel': False,
