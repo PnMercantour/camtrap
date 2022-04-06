@@ -38,7 +38,7 @@ component = html.Div([
 })
 def display_media(media_path, use_alt_server, alt_server_url):
     if media_path is None:
-        return ({"video": {'src': None, 'hidden': False}, "photo": {'src': None, 'hidden': True}})
+        return ({"video": {'src': None, 'hidden': True}, "photo": {'src': None, 'hidden': True}})
     path = Path(media_path)
     if use_alt_server:
         url = alt_server_url + str(media_path)
