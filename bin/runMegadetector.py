@@ -17,6 +17,18 @@ def processMedia(path, relative, json_dir, image_dir, tf_detector, first_frame=0
         print(path, 'not a file')
         return
     print(f'Processing media {path}')
+    if path.suffix in ['.jpg', '.JPG']:
+        json_file = json_dir / f'{path.name}.json'
+        if overwrite or not json_file.exists():
+            try:
+                pil_image = Image.open(path)
+                result = tf_detector.generate_detections_one_image(
+                    pil_image, str(relative / path.name))
+                with open(json_file, 'w') as f:
+                    json.dump(result, f)
+            except:
+                print('Error:processMedia: invalid image file', path)
+        return
     if path.suffix not in ['.MP4', '.mp4']:
         print(path, 'unhandled media format')
         return
@@ -136,6 +148,8 @@ Batch processing of media files with megadetector.
     if args.custom is not None:
         custom = json.loads(args.custom)
         custom.sort()
+    else:
+        custom = []
     print(args)
     start_time = time.time()
     print('Loading model:', args.detector_file)

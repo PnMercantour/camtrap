@@ -10,8 +10,8 @@ load_dotenv(project_root / 'config/default_config')
 data_root = project_root / getenv('CAMTRAP_DATA')
 "Location of processed files"
 
-video_root = project_root / getenv('CAMTRAP_VIDEO')
-"Location of raw video files"
+media_root = project_root / getenv('MEDIA_ROOT')
+"Location of raw media files"
 
 with (project_root/"config"/"species.json").open() as f:
     species_options = json.load(f)

@@ -245,7 +245,7 @@ python bin/dashboard.py
 
 ```
 
-Enregistrer les préférences (CAMTRAP_VIDEO, ...) dans .env à la racine du projet.
+Enregistrer les préférences (MEDIA_ROOT, ...) dans .env à la racine du projet.
 
 Lancer le serveur dash
 python dashboard/camtrap.py
@@ -255,15 +255,3 @@ python dashboard/camtrap.py
 video player
 https://community.plotly.com/t/how-to-use-html-video/37529
 https://community.plotly.com/t/adding-video-player/5303
-
-```
-
-ln -s <video_root_dir> data/video
-
-```
-
-permet d'accéder aux vidéos avec la valeur par défaut de l'option root.
-
-```
-
-```

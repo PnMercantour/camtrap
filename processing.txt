@@ -59,3 +59,59 @@ toutes sauf
 
 823, 824, 826, 1133, 1134, 1136, 1137, 1139 à 98%, pourtant elle est vide.
 65 a un loup.
+
+Les deux disques de 8TB ont le même nom INTENSO (à changer, si possible, lorsqu'une copie complète aura été effectuée)
+
+DISQUE 1:
+Intégralité de Maille [1-4]*
+Maille [6-8]* effacées du disque
+Médias rejetés effacés du disque
+
+DISQUE 2:
+Intégralité de Maille [5-8]*
+Maille [1-2]* effacées du disque
+Médias rejetés effacés du disque
+
+CGPIA:
+Médias rejetés dans media/rejected
+
+MEDIASERVER:
+Intégralité des Mailles [1-2]*
+Intégralité des Mailles [6-8]*
+Répertoire contenant les médias rejetés (à renommer)
+
+TODO gestion des médias:
+
+    Maille 5*
+
+        copier de DISQUE 2 vers MEDIASERVER
+        effacer sur DISQUE 1
+
+    Maille [3-4]*
+
+        copier de DISQUE 1 vers MEDIASERVER
+        effacer sur DISQUE 2
+
+    Medias rejetés
+        normaliser le nom de maille MEDIASERVER
+
+
+Traitement des données, megadetector, exif, metadata, etc
+
+exif:
+    Maille * traitées (MP4), JPG en attente dans data/exif1
+    TODO  mettre en place les exif JPG
+
+run_megadetector:
+    Maille * traitées (MP4)
+    TODO traiter les JPG
+
+metadata:
+    Tous les exif MP4 traités.
+    TODO Exif JPG à traiter.
+
+megadetector_data:
+    A jour avec metadata (MP4 ok, JPG nok)
+
+serveur camtrap.mercantour-parcnational.fr
+    TODO pousser data/detection/megadetector et data/metadata
