@@ -64,21 +64,20 @@ Les deux disques de 8TB ont le même nom INTENSO (à changer, si possible, lorsq
 
 DISQUE 1:
 Intégralité de Maille [1-4]*
-Maille [6-8]* effacées du disque
+Maille [5-8]* effacées du disque
 Médias rejetés effacés du disque
 
 DISQUE 2:
 Intégralité de Maille [5-8]*
-Maille [1-2]* effacées du disque
+Maille [1-4]* effacées du disque
 Médias rejetés effacés du disque
 
 CGPIA:
 Médias rejetés dans media/rejected
 
 MEDIASERVER:
-Intégralité des Mailles [1-2]*
-Intégralité des Mailles [6-8]*
-Répertoire contenant les médias rejetés (à renommer)
+Intégralité des Mailles [1-8]*
+rejected contient les médias supprimés des disques.
 
 TODO gestion des médias:
 
@@ -87,31 +86,37 @@ TODO gestion des médias:
         copier de DISQUE 2 vers MEDIASERVER
         effacer sur DISQUE 1
 
-    Maille [3-4]*
-
-        copier de DISQUE 1 vers MEDIASERVER
-        effacer sur DISQUE 2
-
-    Medias rejetés
-        normaliser le nom de maille MEDIASERVER
-
 
 Traitement des données, megadetector, exif, metadata, etc
 
 exif:
-    Maille * traitées (MP4), JPG en attente dans data/exif1
-    TODO  mettre en place les exif JPG
+    Toutes les données traitées
+    TODO  corriger les données exif mal datées. Voir script statistics.py
+        check dates
+        8 2020-05-17 {'start_datetime': datetime.datetime(2020, 4, 24, 11, 6, 48), 'end_datetime': datetime.datetime(2020, 5, 18, 7, 3, 0, 250000), 'fileTypes': {'MP4': 389}}
+        8 2020-02-04 {'start_datetime': datetime.datetime(2018, 12, 31, 13, 52, 32), 'end_datetime': datetime.datetime(2019, 2, 4, 10, 50, 9, 250000), 'fileTypes': {'MP4': 42}}
+        22 2021-01-28 {'start_datetime': datetime.datetime(2017, 3, 13, 17, 26, 23), 'end_datetime': datetime.datetime(2017, 6, 4, 21, 17, 29), 'fileTypes': {'MP4': 673}}
+        22 2020-11-06 {'start_datetime': datetime.datetime(2017, 2, 4, 17, 45, 1), 'end_datetime': datetime.datetime(2017, 3, 13, 17, 24, 59, 500000), 'fileTypes': {'MP4': 220}}
+        22 2020-09-30 {'start_datetime': datetime.datetime(2017, 1, 1, 18, 18, 41), 'end_datetime': datetime.datetime(2017, 2, 4, 17, 34, 43), 'fileTypes': {'JPEG': 2590}}
+        22 2020-05-14 {'start_datetime': datetime.datetime(2020, 3, 11, 16, 13, 8), 'end_datetime': datetime.datetime(2020, 5, 15, 13, 53, 55, 500000), 'fileTypes': {'MP4': 435}}
+        23 2021-04-03 {'start_datetime': datetime.datetime(2017, 5, 5, 1, 24, 42), 'end_datetime': datetime.datetime(2017, 5, 28, 0, 58, 12, 250000), 'fileTypes': {'MP4': 774}}
+        23 2021-02-25 {'start_datetime': datetime.datetime(2017, 4, 7, 2, 17, 17), 'end_datetime': datetime.datetime(2017, 5, 5, 1, 15, 25, 250000), 'fileTypes': {'MP4': 262}}
+        56 2020-05-15 {'start_datetime': datetime.datetime(2020, 3, 14, 10, 25, 46), 'end_datetime': datetime.datetime(2020, 5, 16, 16, 14, 49, 750000), 'fileTypes': {'MP4': 139}}
+        66 2020-03-10 {'start_datetime': datetime.datetime(2017, 1, 1, 0, 0, 1), 'end_datetime': datetime.datetime(2017, 1, 1, 0, 1, 27), 'fileTypes': {'JPEG': 5}}
+        73 2021-08-31 {'start_datetime': datetime.datetime(2021, 7, 30, 14, 10, 10), 'end_datetime': datetime.datetime(2021, 9, 1, 8, 23, 42, 500000), 'fileTypes': {'MP4': 232}}
+        101 2020-07-26 {'start_datetime': datetime.datetime(2017, 1, 1, 0, 0, 6), 'end_datetime': datetime.datetime(2020, 6, 9, 11, 4, 42, 750000), 'fileTypes': {'MP4': 191}}
 
 run_megadetector:
-    Maille * traitées (MP4)
-    TODO traiter les JPG
+    Toutes les données traitées
+    TODO A l'occasion, calculer des frames intermédiaires (la granularité de 5s n'est pas assez précise)
 
 metadata:
-    Tous les exif MP4 traités.
-    TODO Exif JPG à traiter.
+    Toutes les données traitées
+    TODO: mise à jour après fix des données exif.
 
 megadetector_data:
-    A jour avec metadata (MP4 ok, JPG nok)
+    A jour avec metadata
 
 serveur camtrap.mercantour-parcnational.fr
-    TODO pousser data/detection/megadetector et data/metadata
+    TODO pousser data/detection/megadetector et data/metadata et mettre à jour l'appli (attention: changement de format des métadonnées)
+

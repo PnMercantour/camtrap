@@ -13,12 +13,14 @@ import observationData
 
 digitizer_info = html.Div('vide', id='observation:digitizer')
 
-group_mode = dbc.Switch(label='Appliquer au groupe',
-                        id='observation:group_mode', value=False)
+group_mode_switch = dbc.Switch(label='Appliquer au groupe',
+                               id='observation:group_mode', value=False)
 valid = dbc.Switch(label='Valider',
                    id='observation:valid', value=False)
 notify = dbc.Switch(label='Signaler',
                     id='observation:notify', value=False)
+empty = dbc.Switch(label='Vide',
+                   id='observation:empty', value=False)
 multispecies = dbc.Switch(label='Plusieurs espèces',
                           id='observation:multispecies', value=False)
 copy = dbc.Button('Copier', id='observation:copy',
@@ -72,8 +74,9 @@ card = dbc.Card([
         dbc.Col(digitizer_info, md=7, sm=12),
     ])),
     dbc.CardBody([
-        group_mode,
+        group_mode_switch,
         valid, notify,
+        empty,
         multispecies,
         dbc.Row([
             dbc.Col('Faune sauvage', md=5, sm=12),
@@ -94,6 +97,7 @@ card = dbc.Card([
 ])
 
 dummy_attributes = {
+    'empty': False,
     'valid': False,
     'notify': False,
     'multispecies': False,
@@ -112,6 +116,7 @@ def normalize_obs(media, visit, site_id):
     return {
         'user': obs.get('user'),
         'attributes': {
+            'empty': attributes.get('empty'),
             'valid': attributes.get('valid'),
             'notify': attributes.get('notify'),
             'multispecies': attributes.get('multispecies'),
@@ -136,11 +141,12 @@ def info_string(size):
 @ dash.callback(
     output=dict(
         digitizer_info=Output(digitizer_info, 'children'),
-        group_mode=Output(group_mode, 'value'),
-        group_info=Output(group_mode, 'label'),
+        group_mode=Output(group_mode_switch, 'value'),
+        group_info=Output(group_mode_switch, 'label'),
         attributes={
             'valid': Output(valid, 'value'),
             'notify': Output(notify, 'value'),
+            'empty': Output(empty, 'value'),
             'multispecies': Output(multispecies, 'value'),
             'species': Output(species, 'value'),
             'domestic': Output(domestic, 'value'),
@@ -152,15 +158,16 @@ def info_string(size):
         disable_cancel=Output(cancel, 'disabled'),
     ),
     inputs=dict(
-        group_mode=State(group_mode, 'value'),
+        group_mode=State(group_mode_switch, 'value'),
         attributes={
-            'valid': State(valid, 'value'),
-            'notify': State(notify, 'value'),
-            'multispecies': State(multispecies, 'value'),
-            'species': State(species, 'value'),
-            'domestic': State(domestic, 'value'),
-            'population': State(population, 'value'),
-            'comments': State(comments, 'value'),
+            'empty': Input(empty, "value"),
+            'valid': Input(valid, 'value'),
+            'notify': Input(notify, 'value'),
+            'multispecies': Input(multispecies, 'value'),
+            'species': Input(species, 'value'),
+            'domestic': Input(domestic, 'value'),
+            'population': Input(population, 'value'),
+            'comments': Input(comments, 'value'),
         },
         cookie=State(cookie, 'data'),
         context={
@@ -218,29 +225,50 @@ def update_observation(group_mode,  attributes, cookie, context, preferences, ot
             'group_mode': group_mode_enabled,
             'group_info': info_string(len(group_obs)),
             'cookie': {'attributes': attributes, 'group_mode': group_mode},
-            'disable_commit': False,
-            'disable_cancel': False,
+            'disable_commit': True,
+            'disable_cancel': True,
         })
 
     triggers = [trigger['prop_id']
                 for trigger in callback_context.triggered]
-    if 'observation' in triggers[0]:
-        action = triggers[0].split(':')[1].split('.')[0]
-        if action == 'cancel':
-            return(initialize())
-        if action == 'commit':
-            if group_mode:
-                for file_name in medias:
-                    observationData.putObservation({
-                        'user': auth.trusted_user(),
-                        'attributes': attributes,
-                    },
-                        file_name, visit, site_id)
-            else:
+    if empty.id in triggers[0]:
+        if attributes['empty']:
+            attributes['valid'] = True
+            attributes['notify'] = False
+            attributes['multispecies'] = None
+            attributes['species'] = None
+            attributes['domestic'] = None
+            attributes['population'] = None
+    if any([(attribute.id in triggers[0]) for attribute in
+            [multispecies, species, domestic, population]]):
+        attributes['empty'] = False
+    if any([(attribute.id in triggers[0]) for attribute in
+            [group_mode_switch, empty, valid, notify, multispecies, species, domestic, population, comments]]):
+        return ({
+            'digitizer_info': auth.trusted_user(),
+            'attributes': attributes,
+            'group_mode': group_mode,
+            'group_info': no_update,
+            'cookie': no_update,
+            # TODO set disable_commit and disable_cancel according to edited vs initial attributes comparison
+            'disable_commit': False,
+            'disable_cancel': False,
+        })
+    if cancel.id in triggers[0]:
+        return initialize()
+    if commit.id in triggers[0]:
+        if group_mode:
+            for file_name in medias:
                 observationData.putObservation({
                     'user': auth.trusted_user(),
                     'attributes': attributes,
                 },
                     file_name, visit, site_id)
-            return(initialize())
+        else:
+            observationData.putObservation({
+                'user': auth.trusted_user(),
+                'attributes': attributes,
+            },
+                file_name, visit, site_id)
+        return(initialize())
     return initialize()

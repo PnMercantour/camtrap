@@ -6,10 +6,6 @@ statut de l'observation
 - signalée (manque un taxon, autre problème)
 - media à supprimer
 
-# metadata
-
-Supprimer le module obsolète dataFinder
-
 # data
 
 Enrichir config/megadetector.json (seuils, ...)
@@ -61,13 +57,12 @@ Recalage sur la vidéo la plus proche :
 
 # Observation
 
-La carte observation contient les données d'observation saisies par un agent.
-A la lecture, l'observation la plus récente est chargée en mémoire.
-
-A terme : voir l'historique des observations.
-
-Statut: validé ou pas.
-Statut: signaler une obs.
+Ajouter la date de création de l'obs
+Ajouter un bouton vide
+Ajouter le sexe
+Ajouter la liste des médias
+Ajouter la liste des bounding boxes (media/frame/bb) pour classification ultérieure (alternative : écran de confirmation a posteriori sur les images zoomées)
+Ajouter la sélection de la ou des meilleures images.
 
 ## Initialisation de la fiche
 

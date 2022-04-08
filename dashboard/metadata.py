@@ -67,8 +67,8 @@ def buildMetadata(visit, site_id):
             )
             if record["fileType"] == "MP4":
                 record["startTime"] = (datetime.strptime(
-                    md["QuickTime:MediaCreateDate"], exiftoolDateFormat)).isoformat()
-                record["duration"] = md["QuickTime:TrackDuration"]
+                    md["QuickTime:CreateDate"], exiftoolDateFormat)).isoformat()
+                record["duration"] = md["QuickTime:Duration"]
             elif record["fileType"] == 'JPEG':
                 record["startTime"] = (datetime.strptime(
                     md["EXIF:DateTimeOriginal"], exiftoolDateFormat)).isoformat()
@@ -77,7 +77,7 @@ def buildMetadata(visit, site_id):
                 print(p, 'ignored: unhandled filetype', record["fileType"])
             l.append(record)
 
-    l.sort(key=lambda media: media['startTime'])
+    l.sort(key=lambda media: (media['startTime'], media['fileName']))
     dest_dir = data_root / 'metadata' / 'sites' / str(site_id)
     dest_dir.mkdir(parents=True, exist_ok=True)
     with (dest_dir / visit).with_suffix('.json').open('w') as f:

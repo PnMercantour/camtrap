@@ -1,7 +1,6 @@
 from pathlib import Path
 import json
 from config import data_root
-from dataFinder import *
 import time
 
 
