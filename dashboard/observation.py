@@ -158,7 +158,7 @@ def info_string(size):
         disable_cancel=Output(cancel, 'disabled'),
     ),
     inputs=dict(
-        group_mode=State(group_mode_switch, 'value'),
+        group_mode=Input(group_mode_switch, 'value'),
         attributes={
             'empty': Input(empty, "value"),
             'valid': Input(valid, 'value'),
