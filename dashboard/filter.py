@@ -72,12 +72,21 @@ def three_state_layout(a, b):
     ])
 
 
-observation_subfilter_component = [
+observation_subfilter = dbc.Collapse([
     species,
     three_state_layout(valid, not_valid),
     three_state_layout(notify, not_notify),
     three_state_layout(empty, not_empty),
-]
+])
+
+refresh = dbc.Button(
+    'Rafraîchir', title='Rafraîchir le filtre Observation', size='sm', className="me-md-2")
+
+collapsible_refresh = dbc.Collapse(refresh)
+observation_filter = dbc.Collapse([
+    processed,
+    observation_subfilter,
+])
 
 card = dbc.Card([
     dbc.CardHeader("Filtres"),
@@ -89,18 +98,11 @@ card = dbc.Card([
             id='filter:show_megadetector'
         ),
         html.Hr(),
-        observation_filter_switch,
-        dbc.Collapse([
-            processed,
-            dbc.Collapse(
-                observation_subfilter_component,
-                id='filter:show_observation_subfilter'
-            ),
-        ],
-            # observation_subfilter_component,
-
-            id='filter:show_observation_filter'
-        )
+        dbc.Row([
+            dbc.Col(observation_filter_switch, md=8),
+            dbc.Col(collapsible_refresh, md=4),
+        ], align='baseline'),
+        observation_filter,
     ])
 ])
 
@@ -112,6 +114,7 @@ context = dict(
     ),
     observation=dict(
         active=Input(observation_filter_switch, 'value'),
+        refresh=Input(refresh, 'n_clicks'),
         parameters=dict(
             processed=Input(processed, 'value'),
             subparameters=dict(
@@ -128,7 +131,7 @@ context = dict(
 )
 
 
-subfilters = dict(megadetector=megadetector)
+# subfilters = dict(megadetector=megadetector)
 
 # megadetector filter is called first (and does not depend on observation filter)
 # observation filter is called after. Detector parameters are included to invalidate
@@ -162,15 +165,16 @@ def collapse_options(source):
 
 
 @ dash.callback(
-    Output('filter:show_observation_filter', 'is_open'),
+    Output(observation_filter, 'is_open'),
+    Output(collapsible_refresh, 'is_open'),
     Input(observation_filter_switch, 'value'),
 )
 def collapse_obs_filter(source):
-    return source
+    return source, source
 
 
 @ dash.callback(
-    Output('filter:show_observation_subfilter', 'is_open'),
+    Output(observation_subfilter, 'is_open'),
     Input(processed, 'value'),
 )
 def collapse_obs_subfilter(source):

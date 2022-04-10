@@ -7,15 +7,15 @@ from functools import lru_cache
 import json
 from pathlib import Path
 
-#from dataFinder import *
 import stats
 import observation
 import selection
 from selection import t_selection_context
 import media
+import media_player
 import filter
 
-from config import project_root, video_root, data_root
+from config import project_root, media_root, data_root
 import auth
 
 app = Dash(
@@ -25,7 +25,7 @@ app = Dash(
 print(f"""
 camtrap dashboard
 project root: {project_root}
-video root:{video_root}
+media root:{media_root}
 data root:{data_root}
 {len(auth.users)} user accounts
 authentification: {auth.init(app)}""")
@@ -34,9 +34,9 @@ authentification: {auth.init(app)}""")
 server = app.server
 
 
-@server.route('/video/<path:path>')
-def serve_video(path):
-    return flask.send_from_directory(video_root, path)
+@server.route('/media/<path:path>')
+def serve_media(path):
+    return flask.send_from_directory(media_root, path)
 
 
 map_tab = dbc.Tab([
@@ -45,17 +45,11 @@ map_tab = dbc.Tab([
     tab_id='map',
     label='Carte',
 )
-video_tab = dbc.Tab(
-    tab_id='video',
-    label='Vidéo',
+media_tab = dbc.Tab(
+    tab_id='media_tab',
+    label='Media',
     children=[
-        html.Video(
-            controls=True,
-            id='movie_player',
-            src=None,
-            width='100%',
-            autoPlay=True
-        ),
+        media_player.component,
     ])
 
 image_tab = dbc.Tab([
@@ -99,12 +93,12 @@ preferences_tab = dbc.Tab(
 
 tabs = dbc.Tabs([
     map_tab,
-    video_tab,
+    media_tab,
     image_tab,
     stats_tab,
     preferences_tab,
 ],
-    active_tab='video',
+    active_tab='media_tab',
 )
 
 info_string = html.Div(id='file_info')
@@ -133,29 +127,6 @@ app.layout = dbc.Container([
 ],
     fluid=True,
 )
-
-
-@ app.callback(
-    Output('movie_player', 'src'),
-    Output('movie_player', 'hidden'),
-    media.path,
-    Input('mediaserver:custom', 'value'),
-    Input('mediaserver:url', 'value'),
-)
-def update_video_player(media_path, custom, url):
-    # TODO - send something instead of None
-    if media_path is not None:
-        if custom:
-            path = url + str(media_path)
-            return [path, False]
-        elif (video_root/'video'/media_path).exists():
-            return [(str(Path('/video') / media_path)), False]
-        else:
-            return [None, True]
-        # else:
-        #     return [(str(Path('/video') / media_path)), False]
-    else:
-        return [None, True]
 
 
 if __name__ == "__main__":

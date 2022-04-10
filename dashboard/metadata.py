@@ -60,14 +60,24 @@ def buildMetadata(visit, site_id):
             if md.get('ExifTool:Error') is not None:
                 print(p, 'ignored:', md['ExifTool:Error'])
                 continue
-            l.append(dict(
+            record = dict(
                 fileName=md['File:FileName'],
+                fileType=md['File:FileType'],
                 path=md["SourceFile"],
-                startTime=(datetime.strptime(
-                    md["QuickTime:MediaCreateDate"], exiftoolDateFormat)).isoformat(),
-                duration=md["QuickTime:TrackDuration"]
-            ))
-    l.sort(key=lambda media: media['startTime'])
+            )
+            if record["fileType"] == "MP4":
+                record["startTime"] = (datetime.strptime(
+                    md["QuickTime:CreateDate"], exiftoolDateFormat)).isoformat()
+                record["duration"] = md["QuickTime:Duration"]
+            elif record["fileType"] == 'JPEG':
+                record["startTime"] = (datetime.strptime(
+                    md["EXIF:DateTimeOriginal"], exiftoolDateFormat)).isoformat()
+                record["duration"] = 0
+            else:
+                print(p, 'ignored: unhandled filetype', record["fileType"])
+            l.append(record)
+
+    l.sort(key=lambda media: (media['startTime'], media['fileName']))
     dest_dir = data_root / 'metadata' / 'sites' / str(site_id)
     dest_dir.mkdir(parents=True, exist_ok=True)
     with (dest_dir / visit).with_suffix('.json').open('w') as f:
