@@ -81,7 +81,7 @@ preferences_tab = dbc.Tab(
             dbc.CardHeader('Serveur de vidéos'),
             dbc.CardBody([
                 dbc.Switch(label='Télécharger depuis un serveur alternatif',
-                           value=False, id='mediaserver:custom'),
+                           value=True, id='mediaserver:custom'),
                 dbc.Input(id='mediaserver:url',
                           value='http://localhost:8000/', type='text')
             ])
