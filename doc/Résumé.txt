@@ -1,0 +1,102 @@
+Contexte:
+    - programme de suivi du loup dans le secteur Roya/Vésubie avec des pièges photos (surtout vidéo), depuis 2020.
+    - 43 pièges photos déployés
+    - 477 visites (récupération de carte SD sur le piège environ une fois par mois) comtabilisées (2020 à mi 2021), autant à venir d'ici fin 2022.
+    - partenariat Université de Côte d'Azur pour l'utilisation de l'IA pour la classification automatique des médias
+    - Concepts clés : 
+        détection = il y a un truc potentiellement intéressant sur le média (élimination artefacts)
+        détection faune = c'est un animal (mais pas un humain ou un véhicule)
+        classification = c'est un loup, un renard, ...
+
+Contraintes:
+
+    - urgence. Traiter un maximum de données (2020 - 2021) avant la saison 2022. 
+    - grande quantité de données brutes (174K médias dont 109K vidéos représentant 831 heures d'enregistrement et 65K photos déjà importées) et autant en attente d'être importées.
+    - nombreux déclenchements intempestifs ou sans intérêt (humains, troupeaux)
+    - classification des médias réalisée par des agents répartis sur plusieurs sites, accès internet peu performant, équipement limité (PC bureautique)
+    - avancées UCA sur la classification automatique, mais pas d'outil directement utilisable répondant aux contraintes
+
+Objectifs du projet:
+
+    - fournir aux agents du Parc national du Mercantour un outil ergonomique pour visualiser et classifier en masse les photos et vidéos
+    - intégrer dans l'outil des modules permettant d'accélérer et d'automatiser la détection et la classification
+    - V1 (premier semestre 2022): détection assistée par IA, corrélation temporelle des médias, classification manuelle
+    - V2 (second semestre 2022): assistance IA pour la classification
+
+Application PNM camtrap
+    - environnement batch/interactif pour gérer et classifier les médias et pour analyser les résultats d'observation
+    - détection assistée par IA
+        deep learning tensorflow, moteur megadetector (détection image, faune/humain/véhicule)
+    - classification interactive
+    - architecture ouverte (import/export des données, plugin détection, rapports)
+    - application web optimisée pour réduire au strict minimum le volume (pas le nombre) des échanges entre serveur et client 
+
+Architecture
+
+batch:
+    - un NAS pour servir les médias
+    - un PC puissant avec GPU nvidia compatible tensorflow pour le pré-traitement des médias
+        Dell Precision 7560, GPU Nvidia RTX A5000, linux.
+    - import des médias dans une structure hiérarchique site/visite/média (photo ou vidéo)
+    - extraction des métadonnées exif
+    - production de rapports de détection tensorflow/megadetector
+        1,5M de rapports. Performance : 0,4s par image traitée (10x moins rapide sans GPU).
+
+interactif:
+    - application web sur une VM cloud accessibles aux utilisateurs authentifiées (une vingtaine d'utisateurs, pour l'instant) qui permet:
+        - de sélectionner un site/visite, 
+        - d'appliquer ou pas et de jouer sur les paramètres du filtre de détection megadetector (faune, humain, véhicule, médias sans contenu), 
+        - d'appliquer un filtre sur les observation déjà saisies (oui/non, espèce, en attente de validation, ...)
+        - de consulter les médias (un par un, ou regroupés suivant leur proximité temporelle, paramétrable)
+        - de saisir une observation sur un ou plusieurs médias
+    - l'utilisateur choisit le serveur de médias (le NAS s'il est sur le même site, ou un micro serveur qu'il peut lancer pour consulter sa copie des médias s'il est sur un autre site) : 
+        cette architecture un peu complexe permet de garantir la fluidité de l'application, importante lorsqu'on veut traiter rapidement de nombreux médias.
+    - les données exif et les données de détection megadetector sont précalculées : l'application et le paramétrage des filtres donne un résultat instantané ce qui permet à l'utilisateur de jouer avec les filtres en temps réel.
+
+technologies utilisées :
+    - python (l'application web est développée avec dash https://dash.plotly.com/ , le serveur de médias est également en python). Pas une ligne de javascript!
+    - tensorflow/megadetector : modèle tensorflow cameratrap de microsoft https://github.com/Microsoft/cameratraps , code modifié pour la gestion efficace des vidéos: 
+        les images sont construites à la volée en mémoire, forte densité en début de vidéo, plus lâche en fin de vidéo, environ 11 images analysées pour une vidéo de 30s (à densifier) 
+    - sous le capot (dash): react, bootstrap, leaflet (module carto à venir, déjà utilisé dans un  projet de tableau de bord : https://data.mercantour-parcnational.fr ). 
+
+Filtrage IA et temporel :
+    - le filtrage IA permet d'éliminer 2/3 des médias du lot de départ avec le paramétrage par défaut (soit 116K vidéos et photos). 
+        Dépend bien sûr de la nature des données de départ. Stats pas encore disponibles (en attente de la classification complète des jeux de données)
+    - le filtrage temporel rassemble jusqu'à plusieurs dizaines de médias liés à un même évènement. 
+        Très utile pour traiter d'un coup les passages de troupeaux et les animaux accros du selfie, incontournable pour traiter les photos prises en rafales.
+
+Avancement (V1):
+    - Premiers essais internes de détection megadetector en novembre décembre 2021
+    - l'application a été développée et mise en service au premier trimestre 2022
+        http://camtrap.mercantour-parcnational.fr (accès réservé aux agents du PNM)
+    - environ 3000 lignes de code source python
+    - utilisée par une vingtaine d'agents
+    - 10275 fiches observation saisies au 27 avril (dont 331 observations de loups)
+
+
+Retour des utilisateurs :
+    - heureux!
+    - application robuste (0 plantage), interaction fluide
+    - appropriation du fonctionnement (contrôle des filtres megadetector et observation, groupage des médias)
+
+Retour des managers :
+    - A quand la classification automatique ?
+
+La suite (V2):
+    - moteur de classification IA
+        - spécialisation du moteur cameratrap (en mettant à profit les données de classification que nous sommes en train de produire)
+        et/ou moteur pré-entrainé mis à disposition par un partenaire (Deep Faune (CNRS), UCA, ...)
+        - objectif : pré-remplir les fiches observations. L'agent confirme/infirme le résultat proposé par l'IA.
+    - base de données sql (actuellement un ensemble de fichiers json), refonte de l'association média/observation (n-n plutôt que 1-1)
+    - API pour l'extraction de photos ou de segments de vidéos pour l'interprétation (zoom), la compression des médias, l'export vers un moteur d'apprentissage.
+    - passerelle pour alimenter geonature
+    - vue carto dans l'appli web
+    - rapports d'analyse (post classification) dans l'appli web
+    - mettre l'outil à disposition de partenaires
+
+Axes de recherche pour les partenaires académiques
+    - prendre en compte les particularités du piège photo (flux vidéo, cadrage fixe):
+        - la détection image/image est sous-optimale
+        - suppression du fond
+        - masquage des zones d'exclusion
+    - tracking (suivi des déplacement des animaux dans la vidéo) pour le comptage et l'élimination d'artefacts
