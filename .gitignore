@@ -1,10 +1,11 @@
-data
-media
-debug
-tmp
-frames/
-output/
-img/
+/config/users.json
+/data
+/media
+/backup
+/keep
+/test
+/debug
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -135,4 +136,3 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .vscode/settings.json
-config/users.json

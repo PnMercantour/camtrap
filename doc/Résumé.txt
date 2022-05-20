@@ -1,7 +1,7 @@
 Contexte:
     - programme de suivi du loup dans le secteur Roya/Vésubie avec des pièges photos (surtout vidéo), depuis 2020.
     - 43 pièges photos déployés
-    - 477 visites (récupération de carte SD sur le piège environ une fois par mois) comtabilisées (2020 à mi 2021), autant à venir d'ici fin 2022.
+    - 477 visites (récupération de carte SD sur le piège environ une fois par mois) comptabilisées (2020 à mi 2021), autant à venir d'ici fin 2022.
     - partenariat Université de Côte d'Azur pour l'utilisation de l'IA pour la classification automatique des médias
     - Concepts clés : 
         détection = il y a un truc potentiellement intéressant sur le média (élimination artefacts)
