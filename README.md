@@ -43,6 +43,8 @@ pip install pandas
 
 Installer [exiftool](https://exiftool.org/).
 
+https://exiftool.org/install.html#Unix
+
 ### Module megadetector
 
 [megadetector](https://github.com/microsoft/CameraTraps/blob/master/megadetector.md) est un composant IA de détection de faune dans des images, construit sur le moteur de deep learning [tensorflow](https://www.tensorflow.org/).
