@@ -1,0 +1,5 @@
+dash
+dash-auth
+dash-bootstrap-components
+python-dotenv
+psycopg[binary]
