@@ -14,6 +14,7 @@ project_root = Path(__file__).parent.parent.resolve()
 load_dotenv(project_root / ".env")
 
 MEDIA_ROOT = getenv("MEDIA_ROOT")
+PROJECT = getenv("PROJECT")
 POSTGRES_CONNECTION = getenv("POSTGRES_CONNECTION")
 
 
@@ -21,10 +22,10 @@ def pg_new_project(args):
     with args.conn.cursor() as cursor:
         cursor.execute(
             """
-insert into camtrap.project(name, creation_date)
+insert into camtrap.project(name, meta_creation_date)
 values(%s, %s)
 on conflict (name) do update
-set update_date = excluded.creation_date
+set meta_update_date = excluded.meta_creation_date
 returning id
 """,
             (args.project, datetime.now()),
@@ -38,13 +39,14 @@ def pg_new_file(path, parent_id, args):
     with args.conn.cursor() as cursor:
         cursor.execute(
             """
-insert into camtrap.file(path, project_id, parent_id, level, creation_date)
-values(%s, %s, %s, %s, %s)
+insert into camtrap.file(path, name, project_id, parent_id, level, meta_creation_date)
+values(%s, %s, %s, %s, %s, %s)
 on conflict (project_id, path) do update
-set (parent_id, level, update_date) = (excluded.parent_id, excluded.level, excluded.creation_date)
+set (parent_id, name, level, meta_update_date) = 
+    (excluded.parent_id, excluded.name, excluded.level, excluded.meta_creation_date)
 returning id
 """,
-            (str(path), args.project_id, parent_id, level, datetime.now()),
+            (str(path), path.name, args.project_id, parent_id, level, datetime.now()),
         )
         (id,) = cursor.fetchone()
         return id
@@ -61,7 +63,7 @@ def pg_file_chain(path, args):
         return pg_new_file(path.parent, grand_parent_id, args)
 
 
-def pg_insert_media(exif, parent_id, args):
+def pg_new_media(exif, parent_id, args):
     with args.conn.cursor() as cursor:
         for record in exif:
             media_path = Path(record["SourceFile"])
@@ -89,12 +91,12 @@ def pg_insert_media(exif, parent_id, args):
             cursor.execute(
                 """
 insert into camtrap.media(
-    project_id, id, file_type, mime_type, start_time, duration, creation_date
+    project_id, id, file_type, mime_type, start_time, duration, meta_creation_date
     ) 
 values(%s,%s,%s,%s, %s, %s, %s)
 on conflict(id) do update
-set (file_type, mime_type, start_time, duration, update_date) = 
-(excluded.file_type, excluded.mime_type, excluded.start_time, excluded.duration, excluded.creation_date)
+set (file_type, mime_type, start_time, duration, meta_update_date) = 
+(excluded.file_type, excluded.mime_type, excluded.start_time, excluded.duration, excluded.meta_creation_date)
 """,
                 (
                     args.project_id,
@@ -109,7 +111,7 @@ set (file_type, mime_type, start_time, duration, update_date) =
 
 
 def processPath(relative_path, parent_id, args):
-    print("Entering", relative_path, parent_id)
+    print("Entering", relative_path)
     path = args.root / relative_path
     if not path.exists():
         print(f"relative path {relative_path} does not exist")
@@ -146,7 +148,7 @@ def processPath(relative_path, parent_id, args):
             if len(sub.stdout) > 0:
                 exif = json.loads(sub.stdout)
                 if args.insert:
-                    pg_insert_media(exif, id, args)
+                    pg_new_media(exif, id, args)
                 with (args.output / (relative_path) / "exif.json").open("w") as f:
                     json.dump(exif, f)
         except Exception as e:
@@ -190,6 +192,7 @@ if __name__ == "__main__":
         "--project",
         help="Project name",
         type=str,
+        default=PROJECT,
     )
     parser.add_argument(
         "-o",
@@ -211,6 +214,13 @@ if __name__ == "__main__":
     else:
         args.files = [p.resolve(strict=True) for p in args.files]
     args.output.mkdir(parents=True, exist_ok=True)
+    print(
+        f"""
+Project {args.project}
+Media storage root: {args.root}
+Database: {args.pg}
+"""
+    )
     with psycopg.connect(args.pg) as conn:
         args.conn = conn
         args.project_id = pg_new_project(args)
