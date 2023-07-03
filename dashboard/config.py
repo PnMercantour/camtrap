@@ -18,3 +18,5 @@ with (project_root / "config" / "species.json").open() as f:
 
 with (project_root / "config" / "domestic.json").open() as f:
     domestic_options = json.load(f)
+
+POSTGRES_CONNECTION = getenv("POSTGRES_CONNECTION")
