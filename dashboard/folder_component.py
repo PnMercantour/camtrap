@@ -16,18 +16,23 @@ def project_list(cursor):
 
 def site_list(cursor, project):
     # TEST
-    cursor.execute("select id, name from camtrap.site")
+    cursor.execute("select id, name from camtrap.site where project_id=%s", (project,))
     return [{"label": name, "value": id} for (id, name) in cursor]
 
 
 def sensor_list(cursor, project, site):
-    cursor.execute("select id, name from camtrap.field_sensor")
+    cursor.execute(
+        "select id, name from camtrap.field_sensor where site_id=%s", (site,)
+    )
     return [{"label": name, "value": id} for (id, name) in cursor]
 
 
 def visit_list(cursor, project, site, sensor):
     # TEST
-    cursor.execute("select id, date from camtrap.visit order by date desc")
+    cursor.execute(
+        "select id, date from camtrap.visit where field_sensor_id=%s order by date desc",
+        (sensor,),
+    )
     return [{"label": date, "value": id} for (id, date) in cursor]
 
 
@@ -100,7 +105,7 @@ def update_selection_dropdown(
     visit_value,
     cookie_data,
 ):
-    print("update selection dropdown")
+    print("update selection dropdown", project_value)
     with psycopg.connect(POSTGRES_CONNECTION) as conn:
         print("connected")
         with conn.cursor() as cursor:
