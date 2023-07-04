@@ -3,19 +3,16 @@ from dash import dcc, Input, Output, State, callback_context, callback, no_updat
 import dash
 import random
 import psycopg
-from metadata import listSites, listVisits, getVisitMetadata
-
+from functools import lru_cache
 from config import POSTGRES_CONNECTION
 
 
 def project_list(cursor):
-    print("in project list")
     cursor.execute("select id, name from camtrap.project")
     return [{"label": name, "value": id} for (id, name) in cursor]
 
 
 def site_list(cursor, project):
-    # TEST
     cursor.execute("select id, name from camtrap.site where project_id=%s", (project,))
     return [{"label": name, "value": id} for (id, name) in cursor]
 
@@ -28,7 +25,6 @@ def sensor_list(cursor, project, site):
 
 
 def visit_list(cursor, project, site, sensor):
-    # TEST
     cursor.execute(
         "select id, date from camtrap.visit where field_sensor_id=%s order by date desc",
         (sensor,),
@@ -105,11 +101,8 @@ def update_selection_dropdown(
     visit_value,
     cookie_data,
 ):
-    print("update selection dropdown", project_value)
     with psycopg.connect(POSTGRES_CONNECTION) as conn:
-        print("connected")
         with conn.cursor() as cursor:
-            print("cursor")
             n_project_list = no_update
             n_project = no_update
             n_site_visible = True
@@ -169,4 +162,54 @@ def update_selection_dropdown(
             )
 
 
-input = Input(visit, "value")
+input = {"visit_id": Input(visit, "value")}
+
+
+@lru_cache(maxsize=16)
+def metadata(visit_id):
+    if visit_id is None:
+        return []
+    with psycopg.connect(POSTGRES_CONNECTION) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+select 
+    media.id, 
+    file.name, 
+    media.mime_type, 
+    media.start_time, 
+    media.duration, 
+    file.path 
+from camtrap.media
+join camtrap.file using(id)
+where visit_id=%s
+order by media.start_time
+""",
+                (visit_id,),
+            )
+            return [
+                dict(
+                    id=id,
+                    name=name,
+                    mime_type=mime_type,
+                    start_time=start_time,
+                    duration=duration,
+                    path=path,
+                )
+                for (
+                    id,
+                    name,
+                    mime_type,
+                    start_time,
+                    duration,
+                    path,
+                ) in cursor
+            ]
+
+
+@callback(output=Output(cookie, "data"), inputs=input)
+def test(visit_id):
+    print("visit", visit_id)
+    result = metadata(visit_id)
+    print(len(result), "medias")
+    return no_update

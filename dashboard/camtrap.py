@@ -1,4 +1,14 @@
-from dash import Dash, html, dcc, Input, Output, State, callback_context, no_update
+from dash import (
+    Dash,
+    html,
+    dcc,
+    Input,
+    Output,
+    State,
+    callback,
+    callback_context,
+    no_update,
+)
 from dash.exceptions import PreventUpdate
 import flask
 import dash_bootstrap_components as dbc
@@ -11,10 +21,10 @@ from pathlib import Path
 # import observation
 # import selection
 # from selection import t_selection_context
-# import media
-# import media_player
+import media_player
+
 # import filter
-import folder_component
+import project_component, media_component
 
 from config import project_root, media_root, data_root
 import auth
@@ -49,7 +59,7 @@ media_tab = dbc.Tab(
     tab_id="media_tab",
     label="Media",
     children=[
-        "media_player.component",
+        media_player.component,
     ],
 )
 
@@ -85,7 +95,7 @@ preferences_tab = dbc.Tab(
                     [
                         dbc.Switch(
                             label="Télécharger depuis un serveur alternatif",
-                            value=True,
+                            value=False,
                             id="mediaserver:custom",
                         ),
                         dbc.Input(
@@ -130,7 +140,7 @@ app.layout = dbc.Container(
             [
                 dbc.Col(
                     [
-                        folder_component.component,
+                        project_component.component,
                         "filter.card",
                     ],
                     md=2,
@@ -139,7 +149,7 @@ app.layout = dbc.Container(
                 dbc.Col(
                     [
                         "observation.card",
-                        "media.card",
+                        media_component.component,
                     ],
                     md=4,
                 ),
@@ -149,7 +159,6 @@ app.layout = dbc.Container(
     ],
     fluid=True,
 )
-
 
 if __name__ == "__main__":
     app.run_server(debug=True, host="0.0.0.0")
