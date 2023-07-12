@@ -1,7 +1,8 @@
 [
-    {"label": "Bovins", "value": "bovin"},
-    {"label": "Ovins", "value": "ovin"},
-    {"label": "Caprins", "value": "caprin"},
-    {"label": "Chien", "value": "chien"},
-    {"label": "Chat", "value": "chat"}
+  { "label": "", "value": null },
+  { "label": "Bovins", "value": "bovin" },
+  { "label": "Ovins", "value": "ovin" },
+  { "label": "Caprins", "value": "caprin" },
+  { "label": "Chien", "value": "chien" },
+  { "label": "Chat", "value": "chat" }
 ]

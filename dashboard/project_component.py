@@ -3,6 +3,8 @@ from dash import dcc, Input, Output, State, callback_context, callback, no_updat
 import dash
 import random
 import psycopg
+from pathlib import Path
+from datetime import datetime
 from functools import lru_cache
 from config import POSTGRES_CONNECTION
 
@@ -167,6 +169,7 @@ input = {"visit_id": Input(visit, "value")}
 
 @lru_cache(maxsize=16)
 def metadata(visit_id):
+    "sql result sorted by start_time then by filename, as still pictures may have same start_time"
     if visit_id is None:
         return []
     with psycopg.connect(POSTGRES_CONNECTION) as conn:
@@ -174,7 +177,9 @@ def metadata(visit_id):
             cursor.execute(
                 """
 select 
-    media.id, 
+    media.id,
+    visit_id,
+    field_sensor_id,
     file.name, 
     media.mime_type, 
     media.start_time, 
@@ -183,13 +188,15 @@ select
 from camtrap.media
 join camtrap.file using(id)
 where visit_id=%s
-order by media.start_time
+order by media.start_time, file.name
 """,
                 (visit_id,),
             )
             return [
                 dict(
                     id=id,
+                    visit_id=visit_id,
+                    field_sensor_id=field_sensor_id,
                     name=name,
                     mime_type=mime_type,
                     start_time=start_time,
@@ -198,6 +205,8 @@ order by media.start_time
                 )
                 for (
                     id,
+                    visit_id,
+                    field_sensor_id,
                     name,
                     mime_type,
                     start_time,
@@ -207,9 +216,18 @@ order by media.start_time
             ]
 
 
-@callback(output=Output(cookie, "data"), inputs=input)
-def test(visit_id):
-    print("visit", visit_id)
-    result = metadata(visit_id)
-    print(len(result), "medias")
-    return no_update
+def read_cookie(cookie):
+    try:
+        return dict(
+            id=cookie.get("id"),
+            visit_id=cookie.get("visit_id"),
+            field_sensor_id=cookie.get("field_sensor_id"),
+            name=cookie["name"],
+            mime_type=cookie["mime_type"],
+            start_time=datetime.fromisoformat(cookie["start_time"]),
+            duration=cookie["duration"],
+            path=Path(cookie["path"]),
+        )
+    except:
+        print("invalid cookie", cookie)
+        return None

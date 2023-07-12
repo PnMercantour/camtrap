@@ -13,10 +13,13 @@ data_root = project_root / getenv("CAMTRAP_DATA")
 media_root = project_root / getenv("MEDIA_ROOT")
 "Location of raw media files"
 
-with (project_root / "config" / "species.json").open() as f:
-    species_options = json.load(f)
+with (project_root / "config" / "wildlife.json").open() as f:
+    wildlife_options = json.load(f)
 
 with (project_root / "config" / "domestic.json").open() as f:
     domestic_options = json.load(f)
+
+with (project_root / "config" / "other.json").open() as f:
+    other_options = json.load(f)
 
 POSTGRES_CONNECTION = getenv("POSTGRES_CONNECTION")

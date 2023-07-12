@@ -24,7 +24,7 @@ from pathlib import Path
 import media_player
 
 # import filter
-import project_component, media_component
+import project_component, media_component, observation_component
 
 from config import project_root, media_root, data_root
 import auth
@@ -132,7 +132,7 @@ app.layout = dbc.Container(
                     html.H2("Camtrap - Pièges photos du Parc national du Mercantour"),
                     md=9,
                 ),
-                dbc.Col("auth.component", md=3),
+                dbc.Col(auth.component, md=3),
             ],
         ),
         html.Hr(),
@@ -145,13 +145,19 @@ app.layout = dbc.Container(
                     ],
                     md=2,
                 ),
-                dbc.Col([tabs, info_string], md=6),
                 dbc.Col(
                     [
-                        "observation.card",
+                        tabs,
+                        info_string,
+                    ],
+                    md=7,
+                ),
+                dbc.Col(
+                    [
+                        observation_component.component,
                         media_component.component,
                     ],
-                    md=4,
+                    md=3,
                 ),
             ],
             align="top",
