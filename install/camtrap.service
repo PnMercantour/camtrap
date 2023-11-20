@@ -1,0 +1,12 @@
+[Unit]
+Description=Gunicorn instance to serve the camtrap application
+After=network.target
+
+[Service]
+User=camtrap
+Group=camtrap
+WorkingDirectory=/home/camtrap/camtrap/src
+ExecStart=/home/camtrap/camtrap/venv/bin/gunicorn
+
+[Install]
+WantedBy=multi-user.target

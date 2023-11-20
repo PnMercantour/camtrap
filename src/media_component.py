@@ -1,3 +1,7 @@
+"""
+media_component.py
+select media/media group within the current project and filter contexts
+"""
 import dash_bootstrap_components as dbc
 import dash
 from dash import dcc, html, Input, Output, State, callback_context, no_update, ctx
@@ -5,8 +9,8 @@ from dash.exceptions import PreventUpdate
 from datetime import datetime, timedelta
 import json
 import project_component
+import filter_component
 
-# import filter
 from functools import lru_cache
 from pathlib import Path
 from config import data_root
@@ -121,6 +125,7 @@ component = dbc.Card(
                 ),
                 dbc.Row(
                     [
+                        dbc.Tooltip("Date de prise de vue", target="media:startTime"),
                         dbc.Col("Date", width=3),
                         dbc.Col(id="media:startTime"),
                     ]
@@ -168,7 +173,7 @@ component = dbc.Card(
                         dbc.Col(group_slider, width=6),
                     ]
                 ),
-                dcc.Store(id="camtrap:media_id", storage_type="local"),
+                dcc.Store(id="camtrap:media_cookie", storage_type="local"),
             ]
         ),
     ]
@@ -178,12 +183,18 @@ interval = Input("media_group:interval", "value")
 path = Input("media:path", "children")
 
 
+# Each media can be retrieved from:
+# - the project and filter context (which define the time/name ordered list of media to consider)
+# - the index of the media in the above list
+# Consecutive medias are grouped when end time /start time difference is smaller than interval
+# (a number of seconds). metadata MUST be sorted by time ascending and name ascending.
+# Once computed, a media group can be encoded as the start / end indexes of medias in the group
 @lru_cache
-def groups_table(visit_id, interval):
-    """Group medias when end time /start time difference is smaller than interval (a number of seconds). metadata MUST be sorted by time ascending"""
+def groups_table(visit_id, filter_context, interval):
+    """returns the groups table"""
     # start_datetime and end_datetime properties are datetime objects
     delta = timedelta(seconds=int(interval))
-    metadata = project_component.metadata(visit_id)
+    metadata = filter_component.metadata(visit_id, filter_context)
     g = None
     groups = []
     end_datetime = None
@@ -199,6 +210,7 @@ def groups_table(visit_id, interval):
 
 
 def group_info(groups, media_idx):
+    "returns the group idx for <media_idx>"
     for idx, group in enumerate(groups):
         if group["start"] <= media_idx and group["end"] >= media_idx:
             return idx
@@ -228,7 +240,7 @@ def group_info(groups, media_idx):
             disable_next=Output(next_button, "disabled"),
         ),
         "media_info": dict(
-            cookie=Output("camtrap:media_id", "data"),
+            cookie=Output("camtrap:media_cookie", "data"),
             path=Output("media:path", "children"),
             file_name=Output("media:fileName", "children"),
             start_time=Output("media:startTime", "children"),
@@ -238,6 +250,7 @@ def group_info(groups, media_idx):
     },
     inputs={
         "project_context": project_component.input,
+        "filter_context": filter_component.input,
         "interval_ctl": Input(group_interval, "value"),
         "grp_ctl_in": {
             "current": Input(group_slider, "value"),
@@ -258,13 +271,14 @@ def group_info(groups, media_idx):
 )
 def update(
     project_context,
+    filter_context,
     interval_ctl,
     grp_ctl_in,
     grp_local_ctl_in,
     media_ctl_in,
 ):
     visit_id = project_context["visit_id"]
-    metadata = project_component.metadata(visit_id)
+    metadata = filter_component.metadata(visit_id, filter_context)
     metadata_size = len(metadata)
 
     if metadata_size == 0:
@@ -298,12 +312,13 @@ def update(
             group_duration=None,
         )
     else:
-        groups = groups_table(visit_id, interval_ctl)
+        groups = groups_table(visit_id, filter_context, interval_ctl)
         groups_size = len(groups)
 
         if ctx.triggered_id in [
             None,
             project_component.visit.id,
+            filter_component.megadetector.id,
             group_interval.id,
         ]:
             g_idx = 0
@@ -402,6 +417,7 @@ def update(
         info = dict(
             cookie=dict(
                 metadata[media_idx],
+                filter_context=filter_context,
                 group_start_idx=current_group["start"],
                 group_end_idx=current_group["end"],
                 current_group_size=current_group_size,

@@ -7,17 +7,16 @@ from psycopg.rows import dict_row
 from datetime import timedelta, datetime
 from config import (
     POSTGRES_CONNECTION,
+    OBSERVATION_WINDOW,
     wildlife_options,
     domestic_options,
     other_options,
 )
 from auth import trusted_user
-import project_component
-import media_component
+import filter_component
 
 PROJECT = 1
-VERSION = 1
-WINDOW = 30
+OBSERVATION_VERSION = 1
 
 group_mode_switch = dbc.Switch(label="Appliquer au groupe", value=False)
 show_group = dbc.Collapse(group_mode_switch, is_open=True)
@@ -31,19 +30,15 @@ category = dbc.RadioItems(
     value="wildlife",
 )
 
-wildlife = dbc.Select(
-    placeholder="Faune sauvage",
+category_options = {
+    "wildlife": wildlife_options,
+    "domestic": domestic_options,
+    "other": other_options,
+}
+
+name = dbc.Select(
+    placeholder="Sélectionner une valeur ...",
     options=wildlife_options,
-)
-
-domestic = dbc.Select(
-    placeholder="Faune domestique",
-    options=domestic_options,
-)
-
-other = dbc.Select(
-    placeholder="Autre",
-    options=other_options,
 )
 
 population = dbc.Input(
@@ -66,31 +61,32 @@ commit_btn = dbc.Button("Enregistrer")
 
 
 payload_input = dict(
-    category=State(category, "value"),
-    wildlife=State(wildlife, "value"),
-    domestic=State(domestic, "value"),
-    other=State(other, "value"),
+    category=Input(category, "value"),
+    name=State(name, "value"),
     population=State(population, "value"),
     comment=State(comment, "value"),
 )
 
 payload_output = dict(
     category=Output(category, "value"),
-    wildlife=Output(wildlife, "value"),
-    domestic=Output(domestic, "value"),
-    other=Output(other, "value"),
+    options=Output(name, "options"),
+    name=Output(name, "value"),
     population=Output(population, "value"),
     comment=Output(comment, "value"),
 )
 
-fresh_payload = dict(
-    category="wildlife",
-    wildlife=None,
-    domestic=None,
-    other=None,
-    population=None,
-    comment=None,
-)
+
+def reset_payload(category):
+    return dict(
+        category=category,
+        options=category_options[category],
+        name=None,
+        population=None,
+        comment=None,
+    )
+
+
+fresh_payload = reset_payload("wildlife")
 
 
 def init_payload(id, observations):
@@ -98,9 +94,8 @@ def init_payload(id, observations):
     category = payload.get("category")
     return {
         "category": category,
-        "wildlife": payload.get("wildlife") if category == "wildlife" else None,
-        "domestic": payload.get("domestic") if category == "domestic" else None,
-        "other": payload.get("other") if category == "other" else None,
+        "options": category_options[category],
+        "name": payload.get("name"),
         "population": payload.get("population")
         if category in ("wildlife", "domestic")
         else None,
@@ -112,9 +107,7 @@ observation_fields = [
     observation_id,
     show_group,
     category,
-    wildlife,
-    domestic,
-    other,
+    name,
     population,
     comment,
     cancel_btn,
@@ -141,13 +134,15 @@ component = dbc.Card(
                     is_open=False,
                 ),
                 observations := dbc.ListGroup(),
-                html.Div(id="debug_observation"),
             ]
         ),
     ]
 )
 
 
+# -----------------------------
+# Display existing observations
+# -----------------------------
 def view_payload(payload):
     def view_main():
         category = payload.get("category")
@@ -158,17 +153,48 @@ def view_payload(payload):
                 else ""
             )
             if category == "wildlife":
-                return f'Faune sauvage: {payload.get("wildlife")}{population}'
+                return f'Faune sauvage: {payload.get("name")}{population}'
             else:
-                return f'Faune domestique: {payload.get("domestic")}{population}'
+                return f'Faune domestique: {payload.get("name")}{population}'
 
         else:
-            return f'Autre observation: {payload.get("other")}'
+            return f'Autre observation: {payload.get("name")}'
 
     return html.Div([view_main(), html.Br(), payload.get("comment")])
 
 
-def view_observation(row, media_metadata):
+megadetector_category_dict = {
+    "1": "Animal",
+    "2": "Humain",
+    "3": "Véhicule",
+}
+
+
+def view_megadetector_payload(payload):
+    return html.Div(
+        [
+            f"{megadetector_category_dict[key]}: {value} "
+            for key, value in payload.items()
+        ]
+    )
+
+
+def view_observation(row, media_context):
+    active = media_context["id"] in row["medias"]
+    # TODO: fix this hack
+    if row["observation_type_id"] == 2:
+        if active:
+            return dbc.ListGroupItem(
+                [
+                    f"{row['digitizer']}",
+                    html.Br(),
+                    view_megadetector_payload(row["payload"]),
+                    # str(row["payload"]),
+                ],
+                active=active,
+            )
+        else:
+            return
     return dbc.ListGroupItem(
         [
             view_payload(row["payload"]),
@@ -179,14 +205,16 @@ def view_observation(row, media_metadata):
             html.Br(),
             html.Br(),
             dbc.Button(
-                "Modifier",
+                "Editer",
                 id={
                     "type": "observation",
                     "action": "edit",
                     "id": row["id"],
                 },
-                title="Modifier l'observation",
-            ),
+                title="Editer l'observation",
+            )
+            if active
+            else None,
             dbc.Button(
                 "Supprimer",
                 id={
@@ -195,26 +223,79 @@ def view_observation(row, media_metadata):
                     "id": row["id"],
                 },
                 title="Supprimer l'observation",
-            ),
+            )
+            if active
+            else None,
+            dbc.Button(
+                "Etendre",
+                id={
+                    "type": "observation",
+                    "action": "add_media",
+                    "id": row["id"],
+                },
+                title="Ajouter ce media à l'observation",
+            )
+            if not active
+            else dbc.Button(
+                "Réduire",
+                id={
+                    "type": "observation",
+                    "action": "remove_media",
+                    "id": row["id"],
+                },
+                title="Retirer ce media de l'observation",
+            )
+            if len(row["medias"]) > 1
+            else None,
+            # dbc.Button(
+            #     "Réduire",
+            #     id={
+            #         "type": "observation",
+            #         "action": "remove_media",
+            #         "id": row["id"],
+            #     },
+            #     title="Retirer ce media de l'observation",
+            # )
+            # if active
+            # else dbc.Button(
+            #     "Etendre",
+            #     id={
+            #         "type": "observation",
+            #         "action": "add_media",
+            #         "id": row["id"],
+            #     },
+            #     title="Ajouter ce media à l'observation",
+            # ),
         ],
-        active=media_metadata["id"] in row["medias"],
+        active=active,
     )
 
 
-def list_medias(media_metadata, group_mode):
-    "returns a list of media_id"
+def list_medias(media_context, group_mode):
+    "returns media_id depending on group_mode switch: either all media_id of current group if group_mode or just a singleton"
     if group_mode:
-        visit_id = media_metadata["visit_id"]
-        group_start_idx = media_metadata["group_start_idx"]
-        group_end_idx = media_metadata["group_end_idx"]
-        metadata = project_component.metadata(visit_id)
+        visit_id = media_context["visit_id"]
+        filter_context = media_context["filter_context"]
+        group_start_idx = media_context["group_start_idx"]
+        group_end_idx = media_context["group_end_idx"]
+        metadata = filter_component.metadata(visit_id, filter_context)
         return [md["id"] for md in metadata[group_start_idx : group_end_idx + 1]]
     else:
-        return [media_metadata["id"]]
+        return [media_context["id"]]
 
 
-def insert_observation(payload, media_metadata, group_mode):
-    print("insert")
+def payload_to_db(payload):
+    return json.dumps(
+        dict(
+            payload,
+            version=OBSERVATION_VERSION,
+        )
+    )
+
+
+def insert_observation(payload, media_id_list):
+    "creates an observation in database, attached to all media in media_id_list"
+    print("new observation:", media_id_list)
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
@@ -226,27 +307,22 @@ returning id
 """,
                 {
                     "application": "observation",
-                    "version": VERSION,
+                    "version": OBSERVATION_VERSION,
                     "project_id": PROJECT,
                     "digitizer": trusted_user(),
-                    "payload": json.dumps(
-                        dict(
-                            payload,
-                            version=VERSION,
-                        )
-                    ),
+                    "payload": payload_to_db(payload),
                 },
             )
-            id = cursor.fetchone()["id"]
-            for media_id in list_medias(media_metadata, group_mode):
+            observation_id = cursor.fetchone()["id"]
+            print("new observation", observation_id)
+            for media_id in media_id_list:
                 cursor.execute(
                     """
 insert into camtrap.obsmedia(observation_id, media_id, ref)
-values(%(id)s, %(media_id)s, %(ref)s)
-returning id
+values(%(observation_id)s, %(media_id)s, %(ref)s)
 """,
                     {
-                        "id": id,
+                        "observation_id": observation_id,
                         "media_id": media_id,
                         "ref": None,
                     },
@@ -268,56 +344,64 @@ where id = %(id)s
                 {
                     "id": id,
                     "digitizer": trusted_user(),
-                    "payload": json.dumps(
-                        dict(
-                            payload,
-                            version=VERSION,
-                        )
-                    ),
+                    "payload": payload_to_db(payload),
                 },
             )
 
 
-def select_observations(media_metadata):
+def select_observations(media_context):
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-with selection as (select observation.id from camtrap.observation 
-join camtrap.obsmedia on observation.id = obsmedia.observation_id
-join camtrap.media on obsmedia.media_id = media.id
-where media.visit_id = %(visit_id)s
-and media.start_time between %(window_start)s and %(window_end)s
+with selection as (
+select
+	observation.id
+from
+	camtrap.observation
+join camtrap.obsmedia on
+	observation.id = obsmedia.observation_id
+join camtrap.media on
+	obsmedia.media_id = media.id
+where
+	media.visit_id = %(visit_id)s
+	and media.start_time between %(window_start)s and %(window_end)s
             )
-select 
-observation.id, 
-observation.digitizer,
-observation.digit_timestamp,
-observation.observation_type_id,
-observation.payload,
-min(media.start_time) start_time, 
-max(media.start_time + (media.duration||'s')::interval) end_time, 
-array_agg(distinct media_id) medias
-from camtrap.observation
-join selection using(id)
-join camtrap.obsmedia on observation.id = obsmedia.observation_id
-join camtrap.media on obsmedia.media_id = media.id
-group by observation.id 
-order by start_time
+select
+	observation.id,
+	observation.digitizer,
+	observation.digit_timestamp,
+	observation.observation_type_id,
+	observation.payload,
+	min(media.start_time) start_time,
+	max(media.start_time + (media.duration || 's')::interval) end_time,
+	array_agg(distinct media_id) medias
+from
+	camtrap.observation
+join selection
+		using(id)
+join camtrap.obsmedia on
+	observation.id = obsmedia.observation_id
+join camtrap.media on
+	obsmedia.media_id = media.id
+group by
+	observation.id
+order by
+	start_time
 """,
                 {
-                    "visit_id": media_metadata["visit_id"],
-                    "window_start": datetime.fromisoformat(media_metadata["start_time"])
-                    - timedelta(minutes=WINDOW),
-                    "window_end": datetime.fromisoformat(media_metadata["start_time"])
-                    + timedelta(minutes=WINDOW),
+                    "visit_id": media_context["visit_id"],
+                    "window_start": datetime.fromisoformat(media_context["start_time"])
+                    - timedelta(minutes=OBSERVATION_WINDOW),
+                    "window_end": datetime.fromisoformat(media_context["start_time"])
+                    + timedelta(minutes=OBSERVATION_WINDOW),
                 },
             )
             return [row for row in cursor]
 
 
 def delete_observation(id):
-    print("delete")
+    print("delete observation", id)
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
@@ -326,6 +410,37 @@ delete from camtrap.observation
 where id = %(id)s 
 """,
                 {"id": id},
+            )
+
+
+def add_media(media_id, observation_id):
+    with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+insert into camtrap.obsmedia (observation_id, media_id, ref)
+values(%(observation_id)s, %(media_id)s, %(ref)s)
+""",
+                {
+                    "observation_id": observation_id,
+                    "media_id": media_id,
+                    "ref": None,
+                },
+            )
+
+
+def remove_media(media_id, observation_id):
+    with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+delete from camtrap.obsmedia 
+where observation_id = %(observation_id)s and  media_id = %(media_id)s
+""",
+                {
+                    "observation_id": observation_id,
+                    "media_id": media_id,
+                },
             )
 
 
@@ -338,7 +453,7 @@ where id = %(id)s
         "observations": Output(observations, "children"),
     },
     inputs={
-        "media_metadata": Input("camtrap:media_id", "data"),
+        "media_context": Input("camtrap:media_cookie", "data"),
         "add_observation": Input(add_observation_btn, "n_clicks"),
         "edition_mode": State(show_editor, "is_open"),
         "insert_mode": State(show_group, "is_open"),
@@ -353,7 +468,7 @@ where id = %(id)s
     },
 )
 def update(
-    media_metadata,
+    media_context,
     add_observation,
     edition_mode,
     insert_mode,
@@ -364,7 +479,7 @@ def update(
     payload,
     list_actions,
 ):
-    if media_metadata is None:
+    if media_context is None:
         return {
             "edition_mode": False,
             "insert_mode": no_update,
@@ -380,12 +495,18 @@ def update(
             "payload": fresh_payload,
             "observations": None,
         }
-    print(ctx.triggered_id)
-    print(list_actions)
     if edition_mode:
+        if ctx.triggered_id == category.id:
+            return {
+                "edition_mode": no_update,
+                "insert_mode": no_update,
+                "id": no_update,
+                "payload": reset_payload(payload["category"]),
+                "observations": None,
+            }
         if ctx.triggered_id == commit_btn.id:
             if insert_mode:
-                insert_observation(payload, media_metadata, group_mode)
+                insert_observation(payload, list_medias(media_context, group_mode))
             else:
                 update_observation(id, payload)
     elif not any([click is not None for click in list_actions]):
@@ -397,19 +518,24 @@ def update(
             "insert_mode": False,
             "id": ctx.triggered_id.id,
             "payload": init_payload(
-                ctx.triggered_id.id, select_observations(media_metadata)
+                ctx.triggered_id.id,
+                select_observations(media_context),
             ),
             "observations": None,
         }
     elif ctx.triggered_id.action == "delete":
         delete_observation(ctx.triggered_id.id)
-    obs = select_observations(media_metadata)
+    elif ctx.triggered_id.action == "add_media":
+        add_media(media_context["id"], ctx.triggered_id.id)
+    elif ctx.triggered_id.action == "remove_media":
+        remove_media(media_context["id"], ctx.triggered_id.id)
+    obs = select_observations(media_context)
     return {
         "edition_mode": False,
         "insert_mode": no_update,
         "id": no_update,
         "payload": fresh_payload,
         "observations": [
-            view_observation(observation, media_metadata) for observation in obs
+            view_observation(observation, media_context) for observation in obs
         ],
     }

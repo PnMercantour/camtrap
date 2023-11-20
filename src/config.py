@@ -23,3 +23,6 @@ with (project_root / "config" / "other.json").open() as f:
     other_options = json.load(f)
 
 POSTGRES_CONNECTION = getenv("POSTGRES_CONNECTION")
+
+# OBSERVATION_WINDOW defaults to 30 minutes.
+OBSERVATION_WINDOW = getenv("OBSERVATION_WINDOW", 30)

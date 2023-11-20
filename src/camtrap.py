@@ -21,10 +21,12 @@ from pathlib import Path
 # import observation
 # import selection
 # from selection import t_selection_context
-import media_player
+import media_player_component
 
-# import filter
-import project_component, media_component, observation_component
+import project_component
+import filter_component
+import media_component
+import observation_component
 
 from config import project_root, media_root, data_root
 import auth
@@ -59,7 +61,7 @@ media_tab = dbc.Tab(
     tab_id="media_tab",
     label="Media",
     children=[
-        media_player.component,
+        media_player_component.component,
     ],
 )
 
@@ -141,7 +143,7 @@ app.layout = dbc.Container(
                 dbc.Col(
                     [
                         project_component.component,
-                        "filter.card",
+                        filter_component.component,
                     ],
                     md=2,
                 ),
@@ -154,8 +156,8 @@ app.layout = dbc.Container(
                 ),
                 dbc.Col(
                     [
-                        observation_component.component,
                         media_component.component,
+                        observation_component.component,
                     ],
                     md=3,
                 ),
