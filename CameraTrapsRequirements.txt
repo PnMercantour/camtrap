@@ -1,0 +1,3 @@
+-r CameraTraps/envs/requirements.txt
+psycopg[binary]
+python-dotenv

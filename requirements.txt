@@ -1,6 +1,2 @@
-dash
-dash-auth
-dash-bootstrap-components
-python-dotenv
-psycopg[binary]
-gunicorn
+-r GUIRequirements.txt
+-r CameraTrapsRequirements.txt

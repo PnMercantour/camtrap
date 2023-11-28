@@ -139,6 +139,8 @@ def processPath(relative_path, parent_id, args):
                     "--composite",
                     "-ext",
                     "mp4",
+                    "-ext",
+                    "jpg",
                     relative_path,
                 ],
                 capture_output=True,

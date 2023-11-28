@@ -14,6 +14,7 @@ from config import (
 )
 from auth import trusted_user
 import filter_component
+import project_component
 
 PROJECT = 1
 OBSERVATION_VERSION = 1
@@ -293,7 +294,7 @@ def payload_to_db(payload):
     )
 
 
-def insert_observation(payload, media_id_list):
+def insert_observation(payload, media_id_list, project_id):
     "creates an observation in database, attached to all media in media_id_list"
     print("new observation:", media_id_list)
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
@@ -308,7 +309,7 @@ returning id
                 {
                     "application": "observation",
                     "version": OBSERVATION_VERSION,
-                    "project_id": PROJECT,
+                    "project_id": project_id,
                     "digitizer": trusted_user(),
                     "payload": payload_to_db(payload),
                 },
@@ -461,6 +462,7 @@ where observation_id = %(observation_id)s and  media_id = %(media_id)s
         "commit": Input(commit_btn, "n_clicks"),
         "cancel": Input(cancel_btn, "n_clicks"),
         "id": State(observation_id, "value"),
+        "project_id": State(project_component.project, "value"),
         "payload": payload_input,
         "list_actions": Input(
             {"type": "observation", "action": ALL, "id": ALL}, "n_clicks"
@@ -476,6 +478,7 @@ def update(
     commit,
     cancel,
     id,
+    project_id,
     payload,
     list_actions,
 ):
@@ -506,7 +509,9 @@ def update(
             }
         if ctx.triggered_id == commit_btn.id:
             if insert_mode:
-                insert_observation(payload, list_medias(media_context, group_mode))
+                insert_observation(
+                    payload, list_medias(media_context, group_mode), project_id
+                )
             else:
                 update_observation(id, payload)
     elif not any([click is not None for click in list_actions]):
