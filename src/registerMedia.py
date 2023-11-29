@@ -4,34 +4,33 @@ import json
 import argparse
 import subprocess
 import psycopg
+from psycopg.rows import dict_row
 
 from dotenv import load_dotenv
 from os import getenv, chdir
 
+from manage_project import get_project, registerSession
+
 exiftoolDateFormat = "%Y:%m:%d %H:%M:%S"
 
-project_root = Path(__file__).parent.parent.resolve()
-load_dotenv(project_root / ".env")
 
 MEDIA_ROOT = getenv("MEDIA_ROOT")
-PROJECT = getenv("PROJECT")
-POSTGRES_CONNECTION = getenv("POSTGRES_CONNECTION")
 
 
-def pg_new_project(args):
-    with args.conn.cursor() as cursor:
-        cursor.execute(
-            """
-insert into camtrap.project(name, meta_creation_date)
-values(%s, %s)
-on conflict (name) do update
-set meta_update_date = excluded.meta_creation_date
-returning id
-""",
-            (args.project, datetime.now()),
-        )
-        (id,) = cursor.fetchone()
-        return id
+# def pg_new_project(args):
+#     with args.conn.cursor() as cursor:
+#         cursor.execute(
+#             """
+# insert into camtrap.project(name, meta_creation_date)
+# values(%s, %s)
+# on conflict (name) do update
+# set meta_update_date = excluded.meta_creation_date
+# returning id
+# """,
+#             (args.project, datetime.now()),
+#         )
+#         (id,) = cursor.fetchone()
+#         return id
 
 
 def pg_new_file(path, parent_id, args):
@@ -159,15 +158,54 @@ def processPath(relative_path, parent_id, args):
             raise
 
 
+def run(args):
+    with psycopg.connect(args.pg, row_factory=dict_row) as conn:
+        with conn.cursor() as cursor:
+            args.session_id = registerSession(cursor, "registerMedia", args2json(args))
+
+    with psycopg.connect(args.pg) as conn:
+        args.conn = conn
+        for path in args.files:
+            relative_path = path.relative_to(args.root)
+            parent_id = pg_file_chain(relative_path, args)
+            processPath(relative_path, parent_id, args)
+
+
+def args2json(args):
+    d = dict(vars(args))
+    d["root"] = str(d["root"])
+    d["output"] = str(d["output"])
+    d["files"] = [str(f) for f in d["files"]]
+    print(d)
+    return json.dumps(d)
+
+
 if __name__ == "__main__":
+    project_root = Path(__file__).parent.parent.resolve()
+    load_dotenv(project_root / ".env")
+
     parser = argparse.ArgumentParser(
-        description="""Batch processing of media metadata."""
+        description="""Register Media files into database"""
     )
+    parser.add_argument(
+        "-p",
+        "--project_name",
+        help="Project name",
+        type=str,
+        # default=getenv("PROJECT"),
+    )
+    parser.add_argument(
+        "-id",
+        "--project_id",
+        help="Project id",
+        type=int,
+    )
+
     parser.add_argument(
         "--pg",
         help="PostgreSQL connection string",
         type=str,
-        default=POSTGRES_CONNECTION,
+        default=getenv("POSTGRES_CONNECTION"),
     )
     parser.add_argument(
         "--overwrite",
@@ -185,16 +223,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "-r",
         "--root",
-        help="base directory for media files",
+        help="""base directory for media files, 
+    defaults to MEDIA_ROOT env variable (if defined)
+    or to the root attribute of the project table in the database""",
         type=Path,
-        default=MEDIA_ROOT,
-    )
-    parser.add_argument(
-        "-p",
-        "--project",
-        help="Project name",
-        type=str,
-        default=PROJECT,
     )
     parser.add_argument(
         "-o",
@@ -206,27 +238,37 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.root = args.root.resolve(strict=True)
-    if args.project is None:
-        args.project = args.root.name
-    if args.output is None:
-        args.output = project_root / "data" / args.project / "metadata"
-    if args.files == []:
-        args.files = [args.root]
-    else:
-        args.files = [p.resolve(strict=True) for p in args.files]
-    args.output.mkdir(parents=True, exist_ok=True)
-    print(
-        f"""
-Project {args.project}
-Media storage root: {args.root}
-Database: {args.pg}
-"""
-    )
-    with psycopg.connect(args.pg) as conn:
-        args.conn = conn
-        args.project_id = pg_new_project(args)
-        for path in args.files:
-            relative_path = path.relative_to(args.root)
-            parent_id = pg_file_chain(relative_path, args)
-            processPath(relative_path, parent_id, args)
+    with psycopg.connect(args.pg, row_factory=dict_row) as conn:
+        with conn.cursor() as cursor:
+            project = get_project(cursor, args)
+            if project is None:
+                print("Project not found", args.project_name, args.project_id)
+                exit(1)
+            args.project_name = project["name"]
+            args.project_id = project["id"]
+            if args.root is None:
+                if project["root"] is None:
+                    print("Unspecified Base directory for media files")
+                    exit(1)
+                args.root = Path(project["root"])
+                try:
+                    args.root = Path(args.root).resolve(strict=True)
+                except:
+                    print(f"unreachable Base directory: {args.root}")
+                    exit(1)
+                print(args)
+            if args.output is None:
+                args.output = project_root / "data" / args.project_name / "metadata"
+            if args.files == []:
+                args.files = [args.root]
+            else:
+                args.files = [p.resolve(strict=True) for p in args.files]
+            args.output.mkdir(parents=True, exist_ok=True)
+            print(
+                f"""
+        Project {args.project_name}
+        Media storage root: {args.root}
+        Database: {args.pg}
+        """
+            )
+    run(args)

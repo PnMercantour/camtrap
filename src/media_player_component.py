@@ -15,7 +15,7 @@ from pathlib import Path
 
 from config import project_root, media_root, data_root
 import media_component
-
+import project_component
 
 component = html.Div(
     [
@@ -47,9 +47,10 @@ component = html.Div(
         "media_path": media_component.path,
         "use_alt_server": Input("mediaserver:custom", "value"),
         "alt_server_url": Input("mediaserver:url", "value"),
+        "project_id": State(project_component.project, "value"),
     },
 )
-def display_media(media_path, use_alt_server, alt_server_url):
+def display_media(media_path, use_alt_server, alt_server_url, project_id):
     if media_path is None:
         return {
             "video": {"src": None, "hidden": True},
@@ -59,7 +60,8 @@ def display_media(media_path, use_alt_server, alt_server_url):
     if use_alt_server:
         url = alt_server_url + str(media_path)
     else:
-        url = str(Path("/media", media_path))
+        url = str(Path("/media", str(project_id), media_path))
+        print("url", url)
     if path.suffix in [".JPG"]:
         return {
             "video": {"src": None, "hidden": True},

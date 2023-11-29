@@ -30,6 +30,7 @@ import observation_component
 
 from config import project_root, media_root, data_root
 import auth
+from project_component import project_metadata
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME])
 
@@ -47,9 +48,12 @@ authentification: {auth.init(app)}"""
 server = app.server
 
 
-@server.route("/media/<path:path>")
-def serve_media(path):
-    return flask.send_from_directory(media_root, path)
+@server.route("/media/<int:project_id>/<path:path>")
+def serve_media(project_id, path):
+    project = project_metadata(project_id)
+    print("serving", project["root"], path)
+
+    return flask.send_from_directory(project["root"], path)
 
 
 map_tab = dbc.Tab(

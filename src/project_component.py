@@ -7,6 +7,17 @@ import psycopg
 from psycopg.rows import dict_row
 from functools import lru_cache
 from config import POSTGRES_CONNECTION
+import manage_project
+
+with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
+    with conn.cursor() as cursor:
+        project_table = manage_project.project_table(cursor)
+
+
+def project_metadata(project_id):
+    for project in project_table:
+        if project["id"] == project_id:
+            return project
 
 
 def project_list(cursor):
