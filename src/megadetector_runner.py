@@ -121,6 +121,11 @@ def process_media(cursor, media, args):
     if media["file_type"] == "MP4":
         cap = cv2.VideoCapture(str(media_path))
         fps = cap.get(cv2.CAP_PROP_FPS)
+        wish_last_frame = (
+            round(fps * args.end_cut)
+            if args.end_cut is not None
+            else (args.end_frame if args.end_frame is not None else None)
+        )
         num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         first_frame = max(
             0,
@@ -129,8 +134,8 @@ def process_media(cursor, media, args):
             else 0,
         )
         last_frame = (
-            min(num_frames - 1, args.last_frame)
-            if args.last_frame is not None
+            min(num_frames - 1, wish_last_frame)
+            if wish_last_frame is not None
             else num_frames - 1
         )
         interval = args.interval
@@ -289,6 +294,12 @@ if __name__ == "__main__":
         "--last_frame",
         help="last frame to process in video files",
         type=int,
+    )
+    parser.add_argument(
+        "-e",
+        "--end_cut",
+        help="end cut (in seconds) for vidéo files",
+        type=float,
     )
     parser.add_argument(
         "--dump",

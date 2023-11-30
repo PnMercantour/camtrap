@@ -66,6 +66,8 @@ def pg_new_media(exif, parent_id, args):
     with args.conn.cursor() as cursor:
         for record in exif:
             media_path = Path(record["SourceFile"])
+            if args.verbose:
+                print(media_path)
             file_type = record["File:FileType"]
             mime_type = record["File:MIMEType"]
             if file_type == "MP4":
@@ -124,7 +126,8 @@ set (file_type, mime_type, start_time, duration, meta_update_date, payload) =
 
 
 def processPath(relative_path, parent_id, args):
-    print("Entering", relative_path)
+    if args.verbose:
+        print("Entering", relative_path)
     path = args.root / relative_path
     if not path.exists():
         print(f"relative path {relative_path} does not exist")
@@ -133,7 +136,8 @@ def processPath(relative_path, parent_id, args):
         print(f"relative path {relative_path} is not a directory")
         return
     else:
-        (args.output / relative_path).mkdir(parents=True, exist_ok=True)
+        if args.backup:
+            (args.output / relative_path).mkdir(parents=True, exist_ok=True)
         id = pg_new_file(relative_path, parent_id, args)
         for p in path.iterdir():
             rel = p.relative_to(args.root)
@@ -141,7 +145,8 @@ def processPath(relative_path, parent_id, args):
                 processPath(rel, id, args)
         try:
             # https://exiftool.org/exiftool_pod.html
-            print("Processing", relative_path)
+            if args.verbose:
+                print("Processing", relative_path)
             sub = subprocess.run(
                 [
                     "exiftool",
@@ -164,8 +169,11 @@ def processPath(relative_path, parent_id, args):
                 exif = json.loads(sub.stdout)
                 if args.insert:
                     pg_new_media(exif, id, args)
-                with (args.output / (relative_path) / "exif.json").open("w") as f:
-                    json.dump(exif, f)
+                    if args.backup:
+                        with (args.output / (relative_path) / "exif.json").open(
+                            "w"
+                        ) as f:
+                            json.dump(exif, f)
         except Exception as e:
             print(e)
             print("ERROR: processPath", relative_path)
@@ -190,7 +198,6 @@ def args2json(args):
     d["root"] = str(d["root"])
     d["output"] = str(d["output"])
     d["files"] = [str(f) for f in d["files"]]
-    print(d)
     return json.dumps(d)
 
 
@@ -243,6 +250,19 @@ if __name__ == "__main__":
         type=Path,
     )
     parser.add_argument(
+        "--backup",
+        help="backup exif data",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="verbose mode",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
+    parser.add_argument(
         "-o",
         "--output",
         help="base directory for project data",
@@ -270,19 +290,12 @@ if __name__ == "__main__":
             except:
                 print(f"unreachable Base directory: {args.root}")
                 exit(1)
-            print(args)
-            if args.output is None:
-                args.output = project_root / "data" / args.project_name / "metadata"
+            if args.backup:
+                if args.output is None:
+                    args.output = project_root / "data" / args.project_name / "metadata"
+                args.output.mkdir(parents=True, exist_ok=True)
             if args.files == []:
                 args.files = [args.root]
             else:
                 args.files = [p.resolve(strict=True) for p in args.files]
-            args.output.mkdir(parents=True, exist_ok=True)
-            print(
-                f"""
-        Project {args.project_name}
-        Media storage root: {args.root}
-        Database: {args.pg}
-        """
-            )
     run(args)

@@ -25,7 +25,6 @@ def get_project_id(cursor, name):
 
 def add_observation(cursor, payload, media_id, args):
     "creates a megadetector observation in database, attached to media_id. Don't forget to commit."
-
     cursor.execute(
         """
 with observation_type as (select id from camtrap.observation_type where application = %(application)s )
