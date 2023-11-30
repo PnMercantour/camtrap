@@ -1,10 +1,10 @@
 -- Post import script for LWA
 --  <level> <type>
--- 1 LWA
--- 2 site
--- 3 field_sensor
--- 4 visit (isodate<sp>sensor_code)
--- 5 media
+-- 0 LWA
+-- 1 site
+-- 2 field_sensor
+-- 3 visit (isodate<sp>sensor_code)
+-- 4 media
 --
 --
 --
@@ -15,7 +15,7 @@ select file.id,
 from camtrap.file
     join camtrap.project on file.project_id = project.id
 where project.name = 'LWA'
-    and file.level = 2 on conflict do nothing;
+    and file.level = 1 on conflict do nothing;
 --
 --
 insert into camtrap.field_sensor(id, project_id, name, site_id)
@@ -26,7 +26,7 @@ select file.id id,
 from camtrap.file
     join camtrap.project on file.project_id = project.id
 where project.name = 'LWA'
-    and file.level = 3 on conflict do nothing;
+    and file.level = 2 on conflict do nothing;
 --
 --
 insert into camtrap.visit (id, project_id, "date", field_sensor_id, site_id)
@@ -38,7 +38,7 @@ select file.id id,
 from camtrap.file
     join camtrap.project on file.project_id = project.id
     join camtrap.field_sensor on file.parent_id = field_sensor.id
-where file.level = 4
+where file.level = 3
     and project.name = 'LWA' on conflict do nothing;
 --
 --

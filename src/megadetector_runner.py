@@ -109,7 +109,6 @@ def get_processed_frames(cursor, media_id):
 def process_media(cursor, media, args):
     media_path = args.root / media["path"]
     if all([not media_path.is_relative_to(f) for f in args.files]):
-        print("skip", media_path)
         return
     print("processing media", media_path)
     processed_frames = get_processed_frames(cursor, media["id"])
@@ -144,12 +143,11 @@ def process_media(cursor, media, args):
                 if success:
                     pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
                     # pil_image.show()
-                    if args.overwrite or not json_file.exists():
-                        result = args.model.generate_detections_one_image(
-                            pil_image,
-                            image_id=frame / fps,
-                            detection_threshold=args.detection_threshold,
-                        )
+                    result = args.model.generate_detections_one_image(
+                        pil_image,
+                        image_id=frame / fps,
+                        detection_threshold=args.detection_threshold,
+                    )
                     store_to_db(
                         cursor,
                         media["id"],
@@ -159,7 +157,8 @@ def process_media(cursor, media, args):
                     )
                     print(result)
                     if args.dump:
-                        pil_image.save(image_dir / image_file)
+                        pass
+                        # pil_image.save(image_dir / image_file)
                 else:
                     print("cap_read failure", media_path, frame)
             frame = frame + skip

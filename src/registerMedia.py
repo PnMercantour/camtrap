@@ -75,6 +75,13 @@ def pg_new_media(exif, parent_id, args):
                     )
                 ).isoformat()
                 duration = record["QuickTime:Duration"]
+                payload = json.dumps(
+                    {
+                        "frame_rate": record["QuickTime:VideoFrameRate"],
+                        "width": record["QuickTime:ImageWidth"],
+                        "height": record["QuickTime:ImageHeight"],
+                    }
+                )
             elif file_type == "JPEG":
                 start_time = (
                     datetime.strptime(
@@ -82,6 +89,12 @@ def pg_new_media(exif, parent_id, args):
                     )
                 ).isoformat()
                 duration = 0
+                payload = json.dumps(
+                    {
+                        "width": record["File:ImageWidth"],
+                        "height": record["File:ImageHeight"],
+                    }
+                )
             else:
                 print(media_path, "ignored: unhandled filetype", file_type)
                 continue
@@ -90,12 +103,12 @@ def pg_new_media(exif, parent_id, args):
             cursor.execute(
                 """
 insert into camtrap.media(
-    project_id, id, file_type, mime_type, start_time, duration, meta_creation_date
+    project_id, id, file_type, mime_type, start_time, duration, meta_creation_date, payload
     ) 
-values(%s,%s,%s,%s, %s, %s, %s)
+values(%s,%s,%s,%s, %s, %s, %s, %s)
 on conflict(id) do update
-set (file_type, mime_type, start_time, duration, meta_update_date) = 
-(excluded.file_type, excluded.mime_type, excluded.start_time, excluded.duration, excluded.meta_creation_date)
+set (file_type, mime_type, start_time, duration, meta_update_date, payload) = 
+(excluded.file_type, excluded.mime_type, excluded.start_time, excluded.duration, excluded.meta_creation_date, excluded.payload)
 """,
                 (
                     args.project_id,
@@ -105,6 +118,7 @@ set (file_type, mime_type, start_time, duration, meta_update_date) =
                     start_time,
                     duration,
                     datetime.now(),
+                    payload,
                 ),
             )
 
@@ -251,12 +265,12 @@ if __name__ == "__main__":
                     print("Unspecified Base directory for media files")
                     exit(1)
                 args.root = Path(project["root"])
-                try:
-                    args.root = Path(args.root).resolve(strict=True)
-                except:
-                    print(f"unreachable Base directory: {args.root}")
-                    exit(1)
-                print(args)
+            try:
+                args.root = Path(args.root).resolve(strict=True)
+            except:
+                print(f"unreachable Base directory: {args.root}")
+                exit(1)
+            print(args)
             if args.output is None:
                 args.output = project_root / "data" / args.project_name / "metadata"
             if args.files == []:
