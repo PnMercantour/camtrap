@@ -108,6 +108,9 @@ def get_processed_frames(cursor, media_id):
 
 def process_media(cursor, media, args):
     media_path = args.root / media["path"]
+    if all([not media_path.is_relative_to(f) for f in args.files]):
+        print("skip", media_path)
+        return
     print("processing media", media_path)
     processed_frames = get_processed_frames(cursor, media["id"])
     if not media_path.exists():
@@ -229,6 +232,7 @@ def args2json(args):
     d = dict(vars(args))
     d["megadetector"] = str(d["megadetector"])
     d["root"] = str(d["root"])
+    d["files"] = [str(f) for f in d["files"]]
     return json.dumps(d)
 
 
@@ -300,9 +304,11 @@ if __name__ == "__main__":
         type=float,
         default=1.0,
     )
+    parser.add_argument(
+        "files", nargs="*", help="process only these media folders or files", type=Path
+    )
 
     args = parser.parse_args()
-
     with psycopg.connect(args.pg, row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
             project = get_project(project_table(cursor), args.project_name)
@@ -329,6 +335,10 @@ if __name__ == "__main__":
     except:
         print(f"Error: root dir is unreachable: {root_from} was {args.root} ")
         exit(1)
+    if args.files == []:
+        args.files = [args.root]
+    else:
+        args.files = [p.resolve(strict=True) for p in args.files]
     args.megadetector = args.megadetector.resolve(strict=True)
 
     print(
