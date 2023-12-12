@@ -16,7 +16,7 @@ from auth import trusted_user
 import filter_component
 import project_component
 
-from classifTools import txt_animalclasses
+from util import txt_animalclasses
 
 PROJECT = 1
 OBSERVATION_VERSION = 1
