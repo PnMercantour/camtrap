@@ -1,2 +1,3 @@
 -r GUIRequirements.txt
 -r CameraTrapsRequirements.txt
+-r deepfauneRequirements.txt

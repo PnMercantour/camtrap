@@ -7,3 +7,6 @@
 [submodule "ai4eutils"]
 	path = ai4eutils
 	url = https://github.com/Microsoft/ai4eutils
+[submodule "deepfaune"]
+	path = deepfaune
+	url = https://plmlab.math.cnrs.fr/deepfaune/software.git

@@ -27,6 +27,7 @@ import project_component
 import filter_component
 import media_component
 import observation_component
+import stat_visit_component
 
 from config import project_root, media_root, data_root
 import auth
@@ -51,7 +52,6 @@ server = app.server
 @server.route("/media/<int:project_id>/<path:path>")
 def serve_media(project_id, path):
     project = project_metadata(project_id)
-    print("serving", project["root"], path)
 
     return flask.send_from_directory(project["root"], path)
 
@@ -78,10 +78,10 @@ image_tab = dbc.Tab(
     label="Images",
 )
 
-stats_tab = dbc.Tab(
-    html.H1("Bientôt des rapports d'exploitation des données de camtrap!"),
-    tab_id="stats",
-    label="Statistiques",
+stat_visit_tab = dbc.Tab(
+    children=[stat_visit_component.component],
+    tab_id="stat_visit",
+    label="Visite",
     # children=dbc.Card([
     #     dbc.CardHeader('Statistiques du site'),
     #     dbc.CardBody([
@@ -122,9 +122,10 @@ tabs = dbc.Tabs(
         map_tab,
         media_tab,
         image_tab,
-        stats_tab,
+        stat_visit_tab,
         preferences_tab,
     ],
+    id="tabs",
     active_tab="media_tab",
 )
 

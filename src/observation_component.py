@@ -16,6 +16,8 @@ from auth import trusted_user
 import filter_component
 import project_component
 
+from classifTools import txt_animalclasses
+
 PROJECT = 1
 OBSERVATION_VERSION = 1
 
@@ -130,6 +132,8 @@ component = dbc.Card(
         ),
         dbc.CardBody(
             [
+                deepfaune_observations := dbc.ListGroup(),
+                html.Hr(),
                 show_editor := dbc.Collapse(
                     edit := html.Div(observation_fields),
                     is_open=False,
@@ -149,10 +153,11 @@ def view_payload(payload):
         category = payload.get("category")
         if category in ("wildlife", "domestic"):
             population = (
-                f' ({payload["population"]} individus)'
+                f' ({payload["population"]} individu{"s" if payload["population"]> 1 else ""})'
                 if payload["population"] is not None
                 else ""
             )
+            return html.H3(f'{payload.get("name")}{population}')
             if category == "wildlife":
                 return f'Faune sauvage: {payload.get("name")}{population}'
             else:
@@ -172,12 +177,22 @@ megadetector_category_dict = {
 
 
 def view_megadetector_payload(payload):
-    return html.Div(
+    return html.H3(
         [
             f"{megadetector_category_dict[key]}: {value} "
             for key, value in payload.items()
         ]
     )
+
+
+def view_deepfaune_payload(payload):
+    return html.Div(
+        [
+            html.H3(f"{txt_animalclasses['fr'][payload['class']]}"),
+            f"{payload['count']} individu{'s' if payload['count'] > 1 else ''} ({payload['conf']})",
+        ]
+    )
+    return html.Div(str(payload))
 
 
 def view_observation(row, media_context):
@@ -187,9 +202,22 @@ def view_observation(row, media_context):
         if active:
             return dbc.ListGroupItem(
                 [
-                    f"{row['digitizer']}",
-                    html.Br(),
                     view_megadetector_payload(row["payload"]),
+                    # html.Br(),
+                    f"{row['digitizer']}",
+                    # str(row["payload"]),
+                ],
+                active=active,
+            )
+        else:
+            return
+    if row["observation_type_id"] == 3:
+        if active:
+            return dbc.ListGroupItem(
+                [
+                    view_deepfaune_payload(row["payload"]),
+                    # html.Br(),
+                    f"{row['digitizer']}",
                     # str(row["payload"]),
                 ],
                 active=active,
@@ -451,6 +479,7 @@ where observation_id = %(observation_id)s and  media_id = %(media_id)s
         "insert_mode": Output(show_group, "is_open"),
         "id": Output(observation_id, "value"),
         "payload": payload_output,
+        "deepfaune": Output(deepfaune_observations, "children"),
         "observations": Output(observations, "children"),
     },
     inputs={
@@ -488,6 +517,7 @@ def update(
             "insert_mode": no_update,
             "id": None,
             "payload": fresh_payload,
+            "deepfaune": None,
             "observations": None,
         }
     if ctx.triggered_id == add_observation_btn.id:
@@ -496,6 +526,7 @@ def update(
             "insert_mode": True,
             "id": None,
             "payload": fresh_payload,
+            "deepfaune": None,
             "observations": None,
         }
     if edition_mode:
@@ -505,6 +536,7 @@ def update(
                 "insert_mode": no_update,
                 "id": no_update,
                 "payload": reset_payload(payload["category"]),
+                "deepfaune": None,
                 "observations": None,
             }
         if ctx.triggered_id == commit_btn.id:
@@ -526,6 +558,7 @@ def update(
                 ctx.triggered_id.id,
                 select_observations(media_context),
             ),
+            "deepfaune": None,
             "observations": None,
         }
     elif ctx.triggered_id.action == "delete":
@@ -540,7 +573,14 @@ def update(
         "insert_mode": no_update,
         "id": no_update,
         "payload": fresh_payload,
+        "deepfaune": [
+            view_observation(observation, media_context)
+            for observation in obs
+            if observation["observation_type_id"] == 3
+        ],
         "observations": [
-            view_observation(observation, media_context) for observation in obs
+            view_observation(observation, media_context)
+            for observation in obs
+            if observation["observation_type_id"] == 1
         ],
     }

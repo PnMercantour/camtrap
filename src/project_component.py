@@ -226,8 +226,9 @@ def update_selection_dropdown(
             )
 
 
-# Public event that can be listened by other modules
+# Public events that can be listened to by other modules
 input = {"visit_id": Input(visit, "value")}
+state = {"visit_id": State(visit, "value")}
 
 
 # @lru_cache(maxsize=16)

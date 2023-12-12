@@ -76,26 +76,33 @@ def observation_type(cursor, application):
 def meta2db(cursor, args):
     tool = "megadetector_runner"
     params = args2json(args)
-    cursor.execute(
-        """insert into camtrap.session(tool, params)
-        values(%(tool)s, %(params)s)
-        returning id""",
-        {"tool": tool, "params": params},
-    )
-    return cursor.fetchone()["id"]
+    if args.dry_run:
+        print("dry run", params)
+        return None
+    else:
+        cursor.execute(
+            """insert into camtrap.session(tool, params)
+            values(%(tool)s, %(params)s)
+            returning id""",
+            {"tool": tool, "params": params},
+        )
+        return cursor.fetchone()["id"]
 
 
-def store_to_db(cursor, media_id, frame, data, session_id=None):
-    cursor.execute(
-        """insert into camtrap.megadetector(media_id, frame, session_id, data)
-        values(%(media_id)s, %(frame)s, %(session_id)s, %(data)s)""",
-        {
-            "media_id": media_id,
-            "frame": frame,
-            "session_id": session_id,
-            "data": json.dumps(data),
-        },
-    )
+def store_to_db(cursor, media_id, frame, data, args):
+    if args.dry_run:
+        print("dry run", media_id, frame, data)
+    else:
+        cursor.execute(
+            """insert into camtrap.megadetector(media_id, frame, session_id, data)
+            values(%(media_id)s, %(frame)s, %(session_id)s, %(data)s)""",
+            {
+                "media_id": media_id,
+                "frame": frame,
+                "session_id": args.session_id,
+                "data": json.dumps(data),
+            },
+        )
 
 
 def get_processed_frames(cursor, media_id):
@@ -158,7 +165,7 @@ def process_media(cursor, media, args):
                         media["id"],
                         frame,
                         result,
-                        session_id=args.session_id,
+                        args,
                     )
                     print(result)
                     if args.dump:
@@ -183,7 +190,7 @@ def process_media(cursor, media, args):
                     media["id"],
                     0,
                     result,
-                    session_id=args.session_id,
+                    args,
                 )
                 cursor.execute("commit")
             except:
@@ -276,7 +283,13 @@ if __name__ == "__main__":
         action=argparse.BooleanOptionalAction,
         default=False,
     )
-
+    parser.add_argument(
+        "-n",
+        "--dry_run",
+        help="do not write to database",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
     parser.add_argument(
         "-r",
         "--root",

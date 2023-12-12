@@ -61,7 +61,6 @@ def display_media(media_path, use_alt_server, alt_server_url, project_id):
         url = alt_server_url + str(media_path)
     else:
         url = str(Path("/media", str(project_id), media_path))
-        print("url", url)
     if path.suffix in [".JPG"]:
         return {
             "video": {"src": None, "hidden": True},
