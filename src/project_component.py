@@ -8,6 +8,13 @@ from psycopg.rows import dict_row
 from functools import lru_cache
 from config import POSTGRES_CONNECTION
 import manage_project
+from filter_component import (
+    deepfaune_context,
+    deepfaune_events,
+    apply_deepfaune_filter,
+    deepfaune_filter_on,
+    refilter,
+)
 
 with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
     with conn.cursor() as cursor:
@@ -32,6 +39,26 @@ def site_list(cursor, project):
     return list(cursor)
 
 
+def bracket(i):
+    return f"[{i}]" if i else ""
+
+
+def filtered_site_list(cursor, project_id, table, autolock=True):
+    if project_id is None:
+        return
+    project_id = int(project_id)
+    p_filtered = refilter(table, "project_id", project_id)
+    l = site_list(cursor, project_id)
+    for item in l:
+        s_filtered = refilter(p_filtered, "site_id", item["value"])
+        if autolock:
+            item["disabled"] = len(s_filtered) == 0
+        count = sum((i["count"] for i in s_filtered))
+        item["title"] = f"{count} médias classifiés"
+        item["label"] = f'{item["label"]} {bracket(count)}'
+    return l
+
+
 def sensor_list(cursor, site):
     cursor.execute(
         "select name label, id value from camtrap.field_sensor where site_id=%s",
@@ -40,12 +67,44 @@ def sensor_list(cursor, site):
     return list(cursor)
 
 
+def filtered_sensor_list(cursor, site_id, table, autolock=True):
+    if site_id is None:
+        return
+    site_id = int(site_id)
+    s_filtered = refilter(table, "site_id", site_id)
+    l = sensor_list(cursor, site_id)
+    for item in l:
+        fs_filtered = refilter(s_filtered, "field_sensor_id", item["value"])
+        if autolock:
+            item["disabled"] = len(fs_filtered) == 0
+        count = sum((i["count"] for i in fs_filtered))
+        item["title"] = f"{count} médias classifiés"
+        item["label"] = f'{item["label"]} {bracket(count)}'
+    return l
+
+
 def visit_list(cursor, sensor):
     cursor.execute(
         "select date label, id value from camtrap.visit where field_sensor_id=%s order by date desc",
         (sensor,),
     )
     return list(cursor)
+
+
+def filtered_visit_list(cursor, field_sensor_id, table, autolock=True):
+    if field_sensor_id is None:
+        return
+    field_sensor_id = int(field_sensor_id)
+    fs_filtered = refilter(table, "field_sensor_id", field_sensor_id)
+    l = visit_list(cursor, field_sensor_id)
+    for item in l:
+        v_filtered = refilter(fs_filtered, "visit_id", item["value"])
+        if autolock:
+            item["disabled"] = len(v_filtered) == 0
+        count = sum((i["count"] for i in v_filtered))
+        item["title"] = f"{count} médias classifiés"
+        item["label"] = f'{item["label"]} {bracket(count)}'
+    return l
 
 
 component = dbc.Card(
@@ -132,6 +191,7 @@ def update_cookie(
         "sensor_value": Input(sensor, "value"),
         "visit_value": Input(visit, "value"),
         "cookie_data": State(cookie, "data"),
+        "deepfaune_context": deepfaune_context,
     },
 )
 def update_selection_dropdown(
@@ -140,6 +200,7 @@ def update_selection_dropdown(
     sensor_value,
     visit_value,
     cookie_data,
+    deepfaune_context,
 ):
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
@@ -193,7 +254,11 @@ def update_selection_dropdown(
                                 # Restore visit_id from cookie
                                 n_visit = o_visit
             elif ctx.triggered_id == project.id:
-                n_site_list = site_list(cursor, project_value)
+                if not deepfaune_filter_on(deepfaune_context):
+                    n_site_list = site_list(cursor, project_value)
+                else:
+                    f_table = apply_deepfaune_filter(deepfaune_context)
+                    n_site_list = filtered_site_list(cursor, project_value, f_table)
                 n_site = None
                 n_sensor_visible = False
                 n_sensor_list = []
@@ -202,15 +267,32 @@ def update_selection_dropdown(
                 n_visit_list = []
                 n_visit = None
             elif ctx.triggered_id == site.id:
-                n_sensor_list = sensor_list(cursor, site_value)
+                if not deepfaune_filter_on(deepfaune_context):
+                    n_sensor_list = sensor_list(cursor, site_value)
+                else:
+                    f_table = apply_deepfaune_filter(deepfaune_context)
+                    n_sensor_list = filtered_sensor_list(cursor, site_value, f_table)
                 n_sensor = None
                 n_visit_visible = False
                 n_visit_list = []
                 n_visit = None
             elif ctx.triggered_id == sensor.id:
-                n_visit_list = visit_list(cursor, sensor_value)
+                if not deepfaune_filter_on(deepfaune_context):
+                    n_visit_list = visit_list(cursor, sensor_value)
+                else:
+                    f_table = apply_deepfaune_filter(deepfaune_context)
+                    n_visit_list = filtered_visit_list(cursor, sensor_value, f_table)
                 n_visit = None
-
+            elif ctx.triggered_id in deepfaune_events:
+                if deepfaune_filter_on(deepfaune_context):
+                    f_table = apply_deepfaune_filter(deepfaune_context)
+                    n_site_list = filtered_site_list(cursor, project_value, f_table)
+                    n_sensor_list = filtered_sensor_list(cursor, site_value, f_table)
+                    n_visit_list = filtered_visit_list(cursor, sensor_value, f_table)
+                else:
+                    n_site_list = site_list(cursor, project_value)
+                    n_sensor_list = sensor_list(cursor, site_value)
+                    n_visit_list = visit_list(cursor, sensor_value)
             return dict(
                 project_list=n_project_list,
                 project=n_project,

@@ -189,7 +189,7 @@ path = Input("media:path", "children")
 # Consecutive medias are grouped when end time /start time difference is smaller than interval
 # (a number of seconds). metadata MUST be sorted by time ascending and name ascending.
 # Once computed, a media group can be encoded as the start / end indexes of medias in the group
-@lru_cache
+# @lru_cache
 def groups_table(visit_id, filter_context, interval):
     """returns the groups table"""
     # start_datetime and end_datetime properties are datetime objects
@@ -250,7 +250,7 @@ def group_info(groups, media_idx):
     },
     inputs={
         "project_context": project_component.input,
-        "filter_context": filter_component.input,
+        "filter_context": filter_component.context,
         "interval_ctl": Input(group_interval, "value"),
         "grp_ctl_in": {
             "current": Input(group_slider, "value"),
@@ -315,12 +315,15 @@ def update(
         groups = groups_table(visit_id, filter_context, interval_ctl)
         groups_size = len(groups)
 
-        if ctx.triggered_id in [
-            None,
-            project_component.visit.id,
-            filter_component.megadetector.id,
-            group_interval.id,
-        ]:
+        if (
+            ctx.triggered_id
+            in [
+                None,
+                project_component.visit.id,
+                group_interval.id,
+            ]
+            + filter_component.events
+        ):
             g_idx = 0
             current_group = groups[g_idx]
             current_group_size = current_group["end"] - current_group["start"] + 1

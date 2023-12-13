@@ -15,6 +15,7 @@ from config import (
 from auth import trusted_user
 import filter_component
 import project_component
+import observation_type
 
 from util import txt_animalclasses
 
@@ -196,9 +197,8 @@ def view_deepfaune_payload(payload):
 
 
 def view_observation(row, media_context):
-    active = media_context["id"] in row["medias"]
-    # TODO: fix this hack
-    if row["observation_type_id"] == 2:
+    active = media_context["media_id"] in row["medias"]
+    if row["observation_type_id"] == observation_type.get_id("megadetector"):
         if active:
             return dbc.ListGroupItem(
                 [
@@ -211,7 +211,7 @@ def view_observation(row, media_context):
             )
         else:
             return
-    if row["observation_type_id"] == 3:
+    if row["observation_type_id"] == observation_type.get_id("deepfaune"):
         if active:
             return dbc.ListGroupItem(
                 [
@@ -276,25 +276,6 @@ def view_observation(row, media_context):
             )
             if len(row["medias"]) > 1
             else None,
-            # dbc.Button(
-            #     "Réduire",
-            #     id={
-            #         "type": "observation",
-            #         "action": "remove_media",
-            #         "id": row["id"],
-            #     },
-            #     title="Retirer ce media de l'observation",
-            # )
-            # if active
-            # else dbc.Button(
-            #     "Etendre",
-            #     id={
-            #         "type": "observation",
-            #         "action": "add_media",
-            #         "id": row["id"],
-            #     },
-            #     title="Ajouter ce media à l'observation",
-            # ),
         ],
         active=active,
     )
@@ -308,9 +289,9 @@ def list_medias(media_context, group_mode):
         group_start_idx = media_context["group_start_idx"]
         group_end_idx = media_context["group_end_idx"]
         metadata = filter_component.metadata(visit_id, filter_context)
-        return [md["id"] for md in metadata[group_start_idx : group_end_idx + 1]]
+        return [md["media_id"] for md in metadata[group_start_idx : group_end_idx + 1]]
     else:
-        return [media_context["id"]]
+        return [media_context["media_id"]]
 
 
 def payload_to_db(payload):
@@ -324,7 +305,6 @@ def payload_to_db(payload):
 
 def insert_observation(payload, media_id_list, project_id):
     "creates an observation in database, attached to all media in media_id_list"
-    print("new observation:", media_id_list)
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
@@ -343,7 +323,6 @@ returning id
                 },
             )
             observation_id = cursor.fetchone()["id"]
-            print("new observation", observation_id)
             for media_id in media_id_list:
                 cursor.execute(
                     """
@@ -359,7 +338,6 @@ values(%(observation_id)s, %(media_id)s, %(ref)s)
 
 
 def update_observation(id, payload):
-    print("update")
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
@@ -430,7 +408,6 @@ order by
 
 
 def delete_observation(id):
-    print("delete observation", id)
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
@@ -564,9 +541,9 @@ def update(
     elif ctx.triggered_id.action == "delete":
         delete_observation(ctx.triggered_id.id)
     elif ctx.triggered_id.action == "add_media":
-        add_media(media_context["id"], ctx.triggered_id.id)
+        add_media(media_context["media_id"], ctx.triggered_id.id)
     elif ctx.triggered_id.action == "remove_media":
-        remove_media(media_context["id"], ctx.triggered_id.id)
+        remove_media(media_context["media_id"], ctx.triggered_id.id)
     obs = select_observations(media_context)
     return {
         "edition_mode": False,
@@ -576,11 +553,13 @@ def update(
         "deepfaune": [
             view_observation(observation, media_context)
             for observation in obs
-            if observation["observation_type_id"] == 3
+            if observation["observation_type_id"]
+            == observation_type.get_id("deepfaune")
         ],
         "observations": [
             view_observation(observation, media_context)
             for observation in obs
-            if observation["observation_type_id"] == 1
+            if observation["observation_type_id"]
+            == observation_type.get_id("observation")
         ],
     }
