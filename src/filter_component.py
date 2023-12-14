@@ -5,6 +5,7 @@ import psycopg
 from psycopg.rows import dict_row
 from config import POSTGRES_CONNECTION
 import observation_type
+from util import txt_animalclasses
 
 cancel_btn = dbc.Button("Abandonner")
 commit_btn = dbc.Button("Enregistrer")
@@ -46,11 +47,10 @@ component = dbc.Card(
                 html.Hr(),
                 deepfaune_switch := dbc.Switch(label="DeepFaune", value=True),
                 deepfaune_select := dbc.Select(
-                    options=[
-                        {"label": "Tout afficher", "value": "all"},
-                        {"label": "Loup", "value": 13},
-                        {"label": "Renard", "value": 23},
-                        {"label": "Requin", "value": 30},
+                    options=[{"label": "Tout afficher", "value": "all"}]
+                    + [
+                        {"label": v, "value": k}
+                        for k, v in enumerate(txt_animalclasses["fr"])
                     ],
                     placeholder="Choisir une espèce",
                     value="all",
@@ -123,7 +123,7 @@ def apply_deepfaune_filter(context):
     return _apply_deepfaune_filter(tuple(context))
 
 
-# @lru_cache(maxsize=4)
+@lru_cache(maxsize=4)
 def _apply_deepfaune_filter(context):
     (active, threshold, selection) = context
     with psycopg.connect(POSTGRES_CONNECTION, row_factory=dict_row) as conn:
@@ -150,7 +150,7 @@ def metadata(visit_id, filter_context):
     return _metadata(visit_id, pack_context(filter_context))
 
 
-# @lru_cache(maxsize=16)
+@lru_cache(maxsize=8)
 def _metadata(visit_id, filter_context):
     # all args must be immutable
     if visit_id is None:

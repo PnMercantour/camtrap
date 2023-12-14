@@ -189,7 +189,6 @@ path = Input("media:path", "children")
 # Consecutive medias are grouped when end time /start time difference is smaller than interval
 # (a number of seconds). metadata MUST be sorted by time ascending and name ascending.
 # Once computed, a media group can be encoded as the start / end indexes of medias in the group
-# @lru_cache
 def groups_table(visit_id, filter_context, interval):
     """returns the groups table"""
     # start_datetime and end_datetime properties are datetime objects

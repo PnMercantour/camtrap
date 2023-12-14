@@ -313,7 +313,7 @@ input = {"visit_id": Input(visit, "value")}
 state = {"visit_id": State(visit, "value")}
 
 
-# @lru_cache(maxsize=16)
+@lru_cache(maxsize=8)
 def metadata(visit_id):
     "sql result is sorted by start_time then by filename, as consecutive still pictures may have the same start_time"
     if visit_id is None:
